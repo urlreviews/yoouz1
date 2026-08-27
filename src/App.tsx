@@ -3188,8 +3188,12 @@ export function App() {
       {/* Record Video Review Modal */}
       <CopoCreateModal
         isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
+        onClose={() => {
+          setIsCreateModalOpen(false);
+          setPreselectedPlaceForRecording(null);
+        }}
         places={places}
+        videos={videos}
         preselectedPlace={preselectedPlaceForRecording}
         onPublishVideoReview={handlePublishVideoReview}
         currentUser={currentUser}

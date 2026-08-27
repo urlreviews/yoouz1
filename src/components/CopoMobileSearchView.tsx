@@ -150,8 +150,9 @@ export const CopoMobileSearchView: React.FC<CopoMobileSearchViewProps> = ({
   const rawLogoUrl = searchedPlace ? getPlaceLogoUrl(searchedPlace) : null;
 
   return (
-    <div className="fixed inset-0 h-[100dvh] z-[150] bg-zinc-950 text-white flex flex-col font-sans md:hidden animate-in slide-in-from-bottom duration-200">
-      {/* Top Search Header Bar */}
+    <div className="fixed inset-0 h-[100dvh] z-[250] bg-zinc-950 text-white flex flex-col font-sans animate-in slide-in-from-bottom duration-200">
+      <div className="w-full max-w-md mx-auto h-full flex flex-col min-h-0">
+        {/* Top Search Header Bar */}
       <div className="px-3.5 pt-3.5 pb-3 border-b border-zinc-800 bg-zinc-950/95 backdrop-blur-md sticky top-0 z-30 shadow-sm">
         <form 
           onSubmit={(e) => {
@@ -367,6 +368,7 @@ export const CopoMobileSearchView: React.FC<CopoMobileSearchViewProps> = ({
             </div>
           </div>
         )}
+      </div>
       </div>
     </div>
   );
