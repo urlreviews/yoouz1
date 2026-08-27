@@ -1124,265 +1124,240 @@ export const CopoCreateModal: React.FC<CopoCreateModalProps> = ({
           onChange={handleFileUpload}
         />
 
-        {/* STEP 1: PLACE & RATING SELECTION (Mobile & Desktop) */}
+                {/* STEP 1: PLACE & RATING SELECTION (Responsive Light/Dark) */}
         {step === 1 && (
-          <>
-            {/* Mobile: Render CopoMobileSearchView for 100% exact parity with mobile search page */}
-            <div className="md:hidden fixed inset-0 z-[250] bg-zinc-950">
-              <CopoMobileSearchView
-                places={places}
-                videos={[]}
-                onSelectVideo={() => {}}
-                onOpenPlace={() => {}}
-                onRecordForPlace={(place) => {
-                  setSelectedPlace(place);
-                  setRating(5);
-                  setStep(2);
-                  startCamera();
-                }}
-                onAddPlace={onAddPlace}
-                onClose={onClose}
-              />
-            </div>
-
-            {/* Desktop: Keep original step 1 modal */}
-            <div className="hidden md:flex flex-col h-full bg-zinc-950">
-              {/* Step 1 Header - Responsive Search Bar vs Title Header */}
-              <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-800 bg-zinc-900/50">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-900/25">
-                    <Video className="w-5 h-5 stroke-[2.5]" />
-                  </div>
-                  <div>
-                    <div className="flex flex-col">
-                      <div className="flex items-center gap-2 mb-0.5">
-                        <h2 className="text-lg font-bold text-white">Record Video Review</h2>
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 font-bold text-[10px] uppercase tracking-wider whitespace-nowrap">
-                          v3 • Step 1 of 2
-                        </span>
-                      </div>
-                      <p className="text-xs text-zinc-400 font-medium">
-                        Select business & rate your experience
-                      </p>
+          <div className="flex flex-col h-full w-full bg-zinc-950 md:bg-white relative z-[260]">
+            {/* Step 1 Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-800 md:border-zinc-200 bg-zinc-900/50 md:bg-zinc-50/80 backdrop-blur-sm shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-900/25">
+                  <Video className="w-5 h-5 stroke-[2.5]" />
+                </div>
+                <div>
+                  <div className="flex flex-col">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <h2 className="text-lg font-bold text-white md:text-zinc-900">Record Video Review</h2>
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-blue-500/20 md:bg-blue-100 text-blue-400 md:text-blue-700 font-bold text-[10px] uppercase tracking-wider whitespace-nowrap">
+                        v3 • Step 1 of 2
+                      </span>
                     </div>
+                    <p className="text-xs text-zinc-400 md:text-zinc-500 font-medium">
+                      Select business & rate your experience
+                    </p>
                   </div>
                 </div>
-                <button
-                  onClick={onClose}
-                  className="w-9 h-9 rounded-full bg-zinc-800 hover:bg-zinc-700 flex items-center justify-center text-zinc-300 transition-colors cursor-pointer"
-                  title="Close"
-                >
-                  <X className="w-5 h-5" />
-                </button>
               </div>
+              <button
+                onClick={onClose}
+                className="w-9 h-9 rounded-full bg-zinc-800 md:bg-zinc-200 hover:bg-zinc-700 md:hover:bg-zinc-300 flex items-center justify-center text-zinc-300 md:text-zinc-600 transition-colors cursor-pointer"
+                title="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
 
-              {/* Step 1 Body */}
-              <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
-                {(errorMessage || errorMsg) && (
-                  <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-red-900/20 border border-red-800 text-red-400 text-sm font-medium">
-                    <AlertCircle className="w-5 h-5 shrink-0" />
-                    <span>{errorMessage || errorMsg}</span>
-                  </div>
-                )}
+            {/* Step 1 Body */}
+            <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
+              {(errorMessage || errorMsg) && (
+                <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-red-900/20 md:bg-red-50 border border-red-800 md:border-red-200 text-red-400 md:text-red-700 text-sm font-medium">
+                  <AlertCircle className="w-5 h-5 shrink-0" />
+                  <span>{errorMessage || errorMsg}</span>
+                </div>
+              )}
 
-                {/* Desktop Place Selection */}
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-zinc-100 flex items-center gap-1.5">
-                    <MapPin className="w-4 h-4 text-blue-500" />
-                    <span>Select Place or Business</span>
-                  </label>
-                  {selectedPlace ? (
-                    <div className="flex items-center gap-3 p-4 rounded-2xl bg-blue-900/10 border border-blue-500/20 shadow-lg">
-                      <CopoBrandLogo
-                        domain={selectedPlace.brandDomain}
-                        name={selectedPlace.name}
-                        website={selectedPlace.website}
-                        logoUrl={selectedPlace.logoUrl}
-                        bannerUrl={selectedPlace.bannerUrl || selectedPlace.ogImage}
-                        className="w-14 h-14 rounded-xl border border-zinc-800 bg-white overflow-hidden flex items-center justify-center p-1 shrink-0"
-                        imageClassName="w-full h-full object-contain rounded-lg"
-                        fallbackTextClassName="font-bold text-xl text-white"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-bold text-white text-sm truncate">{formatBusinessName(selectedPlace.name)}</h4>
-                        <p className="text-xs text-zinc-400 truncate">{selectedPlace.address || selectedPlace.city}</p>
-                      </div>
-                      <button
-                        onClick={() => setSelectedPlace(null)}
-                        className="shrink-0 text-xs font-bold text-blue-400 hover:text-blue-300 px-3 py-2 bg-zinc-900 rounded-xl border border-zinc-800 hover:border-zinc-700 transition-all cursor-pointer"
-                      >
-                        Change
-                      </button>
+              {/* Responsive Place Selection */}
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-zinc-100 md:text-zinc-800 flex items-center gap-1.5">
+                  <MapPin className="w-4 h-4 text-blue-500" />
+                  <span>Select Place or Business</span>
+                </label>
+                
+                {selectedPlace ? (
+                  <div className="flex items-center gap-3 p-4 rounded-2xl bg-blue-900/10 md:bg-blue-50/50 border border-blue-500/20 md:border-blue-200 shadow-lg md:shadow-sm">
+                    <CopoBrandLogo
+                      domain={selectedPlace.brandDomain}
+                      name={selectedPlace.name}
+                      website={selectedPlace.website}
+                      logoUrl={selectedPlace.logoUrl}
+                      bannerUrl={selectedPlace.bannerUrl || selectedPlace.ogImage}
+                      className="w-14 h-14 rounded-xl border border-zinc-800 md:border-zinc-200 bg-white overflow-hidden flex items-center justify-center p-1 shrink-0"
+                      imageClassName="w-full h-full object-contain rounded-lg"
+                      fallbackTextClassName="font-bold text-xl text-zinc-900"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-bold text-white md:text-zinc-900 text-sm truncate">{formatBusinessName(selectedPlace.name)}</h4>
+                      <p className="text-xs text-zinc-400 md:text-zinc-500 truncate">{selectedPlace.address || selectedPlace.city}</p>
                     </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <input
-                        type="text"
-                        placeholder="Paste business website URL..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full px-4 py-3 rounded-2xl border border-zinc-800 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 text-sm bg-zinc-900 text-white placeholder:text-zinc-500 transition-all"
-                      />
-                      {searchQuery.trim().length > 0 && (
-                        <div className="max-h-56 overflow-y-auto border border-zinc-800 rounded-2xl divide-y divide-zinc-800 bg-zinc-900 shadow-xl">
-                          {filteredPlaces.length > 0 ? (
-                            filteredPlaces.map((p) => (
-                              <div
-                                key={p.id}
-                                onClick={() => {
-                                  setSelectedPlace(p);
-                                  setSearchQuery("");
-                                }}
-                                className="flex items-center gap-3 p-3 hover:bg-blue-900/20 cursor-pointer transition-colors"
-                              >
-                                <CopoBrandLogo
-                                  domain={p.brandDomain}
-                                  name={p.name}
-                                  website={p.website}
-                                  logoUrl={p.logoUrl}
-                                  bannerUrl={p.bannerUrl || p.ogImage}
-                                  className="w-10 h-10 rounded-xl border border-zinc-800 bg-white overflow-hidden flex items-center justify-center p-1 shrink-0"
-                                  imageClassName="w-full h-full object-contain rounded-lg"
-                                  fallbackTextClassName="font-bold text-sm text-white"
-                                />
-                                <div>
-                                  <h5 className="font-bold text-sm text-white">{formatBusinessName(p.name)}</h5>
-                                  <p className="text-xs text-zinc-400">{p.address || p.city || p.brandDomain}</p>
-                                </div>
+                    <button
+                      onClick={() => setSelectedPlace(null)}
+                      className="shrink-0 text-xs font-bold text-blue-400 md:text-blue-600 hover:text-blue-300 md:hover:text-blue-700 px-3 py-2 bg-zinc-900 md:bg-white rounded-xl border border-zinc-800 md:border-zinc-200 hover:border-zinc-700 md:hover:border-zinc-300 transition-all cursor-pointer shadow-sm"
+                    >
+                      Change
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <input
+                      type="text"
+                      placeholder="Paste business website URL..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full px-4 py-3 rounded-2xl border border-zinc-800 md:border-zinc-300 focus:outline-none focus:ring-2 focus:ring-blue-500/50 md:focus:ring-blue-500/30 focus:border-blue-500 text-sm bg-zinc-900 md:bg-white text-white md:text-zinc-900 placeholder:text-zinc-500 md:placeholder:text-zinc-400 transition-all shadow-sm"
+                    />
+                    {searchQuery.trim().length > 0 && (
+                      <div className="max-h-56 overflow-y-auto border border-zinc-800 md:border-zinc-200 rounded-2xl divide-y divide-zinc-800 md:divide-zinc-100 bg-zinc-900 md:bg-white shadow-xl">
+                        {filteredPlaces.length > 0 ? (
+                          filteredPlaces.map((p) => (
+                            <div
+                              key={p.id}
+                              onClick={() => {
+                                setSelectedPlace(p);
+                                setSearchQuery("");
+                              }}
+                              className="flex items-center gap-3 p-4 bg-zinc-900 md:bg-white hover:bg-zinc-800 md:hover:bg-zinc-50 cursor-pointer transition-colors"
+                            >
+                              <CopoBrandLogo
+                                domain={p.brandDomain}
+                                name={p.name}
+                                website={p.website}
+                                logoUrl={p.logoUrl}
+                                className="w-10 h-10 rounded-lg border border-zinc-800 md:border-zinc-200 bg-white overflow-hidden flex items-center justify-center p-1 shrink-0"
+                                fallbackTextClassName="font-bold text-zinc-900"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <h5 className="font-bold text-sm text-white md:text-zinc-900 truncate">{formatBusinessName(p.name)}</h5>
+                                <p className="text-[11px] text-zinc-500 md:text-zinc-400 truncate">{p.address || p.city}</p>
                               </div>
-                            ))
-                          ) : null}
-
-                          {/* Quick 1-Tap Add Custom Website / Business */}
+                            </div>
+                          ))
+                        ) : (
                           <div
                             onClick={() => {
-                              const trimmed = searchQuery.trim();
-                              const cleanDomain = trimmed.replace(/^https?:\/\//i, "").replace(/\/.*$/, "").toLowerCase();
-                              const newPlace: Place = {
-                                id: cleanDomain.replace(/[^a-zA-Z0-9]/g, "-") || `custom-${Date.now()}`,
-                                name: trimmed.charAt(0).toUpperCase() + trimmed.slice(1),
-                                brandDomain: cleanDomain.includes(".") ? cleanDomain : undefined,
-                                category: "Website",
-                                categoryType: "all",
-                                address: cleanDomain.includes(".") ? cleanDomain : "Verified Business",
+                              const newPlace = {
+                                id: "new-" + Date.now(),
+                                name: formatBusinessName(searchQuery),
+                                website: searchQuery,
+                                brandDomain: searchQuery,
+                                rating: 0,
+                                reviewCount: 0,
+                                source: 'yoouz' as const,
+                                url: searchQuery,
+                                reviews: [],
+                                category: "Local Business",
+                                categoryType: "business",
+                                address: "Online",
                                 city: "Online",
+                                state: "N/A",
+                                zipCode: "N/A",
                                 lat: 0,
                                 lng: 0,
-                                rating: 5,
-                                totalReviews: 1,
-                                ratingDistribution: { stars5: 1, stars4: 0, stars3: 0, stars2: 0, stars1: 0 },
-                                avatarUrl: getCleanLogoUrl(null, cleanDomain) || "",
-                                logoUrl: getCleanLogoUrl(null, cleanDomain) || "",
-                                bannerUrl: "",
-                                photos: [],
-                                openingHours: "Available 24/7",
-                                isOpen: true,
-                                phone: "",
-                                website: cleanDomain.includes(".") ? `https://${cleanDomain}` : `https://${cleanDomain}.com`,
-                                priceRange: "$$",
-                                plusCode: "",
-                                description: `Verified online profile for ${trimmed}`,
-                                popularKeywords: [],
-                                amenities: [],
-                                topDishes: []
-                              };
-                              if (onAddPlace) onAddPlace(newPlace);
+                                timezone: "UTC",
+                                coverPhotoUrl: "",
+                                photoUrls: [],
+                                features: [],
+                                isVerified: false,
+                                createdAt: new Date().toISOString(),
+                                updatedAt: new Date().toISOString(),
+                                searchTokens: []
+                              } as any;
+                              if (onAddPlace) {
+                                onAddPlace(newPlace);
+                              }
                               setSelectedPlace(newPlace);
                               setSearchQuery("");
                             }}
-                            className="flex items-center gap-3 p-4 bg-zinc-900 hover:bg-zinc-800 cursor-pointer transition-colors border-t border-zinc-800"
+                            className="flex items-center gap-3 p-4 bg-zinc-900 md:bg-white hover:bg-zinc-800 md:hover:bg-zinc-50 cursor-pointer transition-colors"
                           >
-                            <div className="w-12 h-12 rounded-xl bg-blue-600/20 text-blue-400 border border-blue-500/20 flex items-center justify-center shrink-0 shadow-sm">
+                            <div className="w-12 h-12 rounded-xl bg-blue-600/20 md:bg-blue-100 text-blue-400 md:text-blue-600 border border-blue-500/20 md:border-blue-200 flex items-center justify-center shrink-0 shadow-sm">
                               <Globe className="w-6 h-6" />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <h5 className="font-bold text-sm text-white truncate">
+                              <h5 className="font-bold text-sm text-white md:text-zinc-900 truncate">
                                 Review "{formatBusinessName(searchQuery)}"
                               </h5>
-                              <p className="text-[11px] text-zinc-500 font-medium">
+                              <p className="text-[11px] text-zinc-500 md:text-zinc-500 font-medium">
                                 Add & record a review for this domain
                               </p>
                             </div>
-                            <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center">
-                              <ArrowRight className="w-4 h-4 text-blue-400" />
+                            <div className="w-8 h-8 rounded-full bg-zinc-800 md:bg-zinc-100 flex items-center justify-center">
+                              <ArrowRight className="w-4 h-4 text-blue-400 md:text-blue-600" />
                             </div>
                           </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {/* Star Rating Section */}
-                {selectedPlace && (
-                  <div className="p-6 rounded-3xl bg-zinc-900 border border-zinc-800 space-y-4 text-center animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    <div className="flex items-center justify-between">
-                      <div className="text-left">
-                        <h3 className="text-sm font-bold text-white">Your Rating</h3>
-                        <p className="text-[11px] text-zinc-500 font-medium">Tap stars to rate your experience</p>
+                        )}
                       </div>
-                      <div className={`px-3 py-1.5 rounded-full font-black text-[9px] uppercase tracking-[0.1em] transition-all duration-300 ${
-                        rating === 0
-                          ? "bg-zinc-800 text-zinc-500 border border-zinc-700"
-                          : "bg-amber-500/20 text-amber-400 border border-amber-500/30 shadow-[0_0_15px_rgba(245,158,11,0.1)]"
-                      }`}>
-                        {rating === 0 ? "Select Star Rating" : getRatingLabel(rating)}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-center gap-3 py-4">
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <button
-                          key={star}
-                          type="button"
-                          onClick={() => setRating(star)}
-                          className="p-1.5 cursor-pointer transition-all hover:scale-110 active:scale-90 group"
-                          title={`${star} Star${star > 1 ? "s" : ""}`}
-                        >
-                          <Star
-                            className={`w-11 h-11 transition-all duration-300 ${
-                              star <= rating 
-                                ? "fill-amber-400 text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.4)]" 
-                                : "text-zinc-800 group-hover:text-zinc-700"
-                            }`}
-                          />
-                        </button>
-                      ))}
-                    </div>
+                    )}
                   </div>
                 )}
               </div>
 
-              {/* Step 1 Footer */}
-              <div className="flex items-center justify-between px-6 py-4 border-t border-zinc-800 bg-zinc-900">
-                <button
-                  onClick={onClose}
-                  className="px-4 py-2.5 rounded-xl text-zinc-400 hover:bg-zinc-800 font-bold text-sm transition-colors cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => {
-                    if (!selectedPlace) {
-                      setErrorMessage("Please select a place or business first.");
-                      return;
-                    }
-                    if (rating === 0) {
-                      setErrorMessage("Please select a star rating before proceeding.");
-                      return;
-                    }
-                    setErrorMessage(null);
-                    setStep(2);
-                    startCamera();
-                  }}
-                  className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-lg shadow-blue-900/30 transition-all cursor-pointer flex items-center gap-2 active:scale-95 group"
-                >
-                  <span>Proceed to Camera</span>
-                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                </button>
-              </div>
+              {/* Star Rating Section */}
+              {selectedPlace && (
+                <div className="p-6 rounded-3xl bg-zinc-900 md:bg-zinc-50 border border-zinc-800 md:border-zinc-200 space-y-4 text-center animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <div className="flex items-center justify-between">
+                    <div className="text-left">
+                      <h3 className="text-sm font-bold text-white md:text-zinc-900">Your Rating</h3>
+                      <p className="text-[11px] text-zinc-500 md:text-zinc-500 font-medium">Tap stars to rate your experience</p>
+                    </div>
+                    <div className={`px-3 py-1.5 rounded-full font-black text-[9px] uppercase tracking-[0.1em] transition-all duration-300 ${
+                      rating === 0
+                        ? "bg-zinc-800 md:bg-zinc-200 text-zinc-500 md:text-zinc-500 border border-zinc-700 md:border-zinc-300"
+                        : "bg-amber-500/20 md:bg-amber-100 text-amber-400 md:text-amber-600 border border-amber-500/30 md:border-amber-200 shadow-[0_0_15px_rgba(245,158,11,0.1)]"
+                    }`}>
+                      {rating === 0 ? "Select Star Rating" : getRatingLabel(rating)}
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-center gap-3 py-4">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        type="button"
+                        onClick={() => setRating(star)}
+                        className="p-1.5 cursor-pointer transition-all hover:scale-110 active:scale-90 group"
+                        title={`${star} Star${star > 1 ? "s" : ""}`}
+                      >
+                        <Star
+                          className={`w-11 h-11 transition-all duration-300 ${
+                            star <= rating 
+                               ? "fill-amber-400 text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.4)]" 
+                               : "text-zinc-800 md:text-zinc-300 group-hover:text-zinc-700 md:group-hover:text-zinc-400"
+                          }`}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
-          </>
+
+            {/* Step 1 Footer */}
+            <div className="flex items-center justify-between px-6 py-4 border-t border-zinc-800 md:border-zinc-200 bg-zinc-900 md:bg-white shrink-0">
+              <button
+                onClick={onClose}
+                className="px-4 py-2.5 rounded-xl text-zinc-400 md:text-zinc-500 hover:bg-zinc-800 md:hover:bg-zinc-100 font-bold text-sm transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (!selectedPlace) {
+                    setErrorMessage("Please select a place or business first.");
+                    return;
+                  }
+                  if (rating === 0) {
+                    setErrorMessage("Please select a star rating before proceeding.");
+                    return;
+                  }
+                  setErrorMessage(null);
+                  setStep(2);
+                  startCamera();
+                }}
+                className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-lg shadow-blue-900/30 transition-all cursor-pointer flex items-center gap-2 active:scale-95 group"
+              >
+                <span>Proceed to Camera</span>
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </button>
+            </div>
+          </div>
         )}
 
         {/* STEP 2: FULLSCREEN CAMERA STUDIO & PLAYBACK (Mobile & Desktop) */}
