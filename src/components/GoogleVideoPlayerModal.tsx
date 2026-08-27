@@ -43,7 +43,7 @@ export const GoogleVideoPlayerModal: React.FC<GoogleVideoPlayerModalProps> = ({
   isBookmarked,
   onOpenCreator
 }) => {
-  const [isPlaying, setIsPlaying] = useState(true);
+  const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState<boolean>(true);
   const [newComment, setNewComment] = useState("");
   const [activeVideoSrc, setActiveVideoSrc] = useState<string>("");
@@ -76,12 +76,10 @@ export const GoogleVideoPlayerModal: React.FC<GoogleVideoPlayerModalProps> = ({
     if (videoRef.current && activeVideoSrc) {
       videoRef.current.currentTime = 0;
       videoRef.current.muted = isMuted;
-      videoRef.current.play().then(() => setIsPlaying(true)).catch((err) => {
-        if (!isMuted && videoRef.current) {
-          videoRef.current.muted = true;
-          videoRef.current.play().catch(() => {});
-        }
-      });
+      try {
+        videoRef.current.pause();
+      } catch (e) {}
+      setIsPlaying(false);
     }
     return () => {
       if (videoRef.current) {

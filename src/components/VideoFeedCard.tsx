@@ -170,45 +170,42 @@ return () => {
     }
   }, [isMuted]);
 
-  // Play / Pause video based on card active state (TikTok/YouTube Shorts sliding buffer logic)
+  // Play / Pause video based on card active state
   useEffect(() => {
     const el = videoRef.current;
     if (!el) return;
 
     if (isActive) {
-      if (isManuallyPaused) {
+      if (!hasUserStartedFeed) {
         try {
           el.pause();
         } catch (e) {}
         setIsPlaying(false);
-        return;
-      }
+        setShowPlayPauseFeedback(null);
+        el.muted = isMuted;
+        if (!isMuted) el.volume = 1;
+      } else {
+        setShowPlayPauseFeedback(null);
+        el.muted = isMuted;
+        if (!isMuted) el.volume = 1;
 
-      setShowPlayPauseFeedback(null);
-      el.muted = isMuted;
-      if (!isMuted) el.volume = 1;
-
-      const playPromise = el.play();
-      if (playPromise !== undefined) {
-        playPromise
-          .then(() => {
-            setIsPlaying(true);
-            setIsBuffering(false);
-          })
-          .catch((err) => {
-            if (err.name === "AbortError") return;
-            // If browser policy prevents unmuted autoplay on initial load, mute element and retry seamlessly
-            el.muted = true;
-            el.play()
-              .then(() => {
+        const playPromise = el.play();
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => {
+              setIsPlaying(true);
+              setIsBuffering(false);
+            })
+            .catch(() => {
+              el.muted = true;
+              el.play().then(() => {
                 setIsPlaying(true);
                 setIsBuffering(false);
-              })
-              .catch(() => {
+              }).catch(() => {
                 setIsPlaying(false);
-                setIsBuffering(false);
               });
-          });
+            });
+        }
       }
     } else {
       // Inactive card: pause and reset time
@@ -227,7 +224,7 @@ return () => {
         el.pause();
       } catch (e) {}
     };
-  }, [isActive, currentSource, isMuted, isManuallyPaused]);
+  }, [isActive, currentSource, isMuted, hasUserStartedFeed]);
 
   // Keep iOS / Android Lock Screen & Media Controls in sync with rich metadata & app logo artwork
   useEffect(() => {
