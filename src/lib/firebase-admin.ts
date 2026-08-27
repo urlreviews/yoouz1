@@ -24,9 +24,19 @@ const app = getApps().length > 0
 
 export const adminAuth = getAuth(app);
 
-export const adminDb = firebaseConfig.firestoreDatabaseId && firebaseConfig.firestoreDatabaseId !== "(default)"
-  ? getFirestore(app, firebaseConfig.firestoreDatabaseId)
-  : getFirestore(app);
+let resolvedAdminDb: any = null;
+try {
+  resolvedAdminDb = firebaseConfig.firestoreDatabaseId && firebaseConfig.firestoreDatabaseId !== "(default)"
+    ? getFirestore(app, firebaseConfig.firestoreDatabaseId)
+    : getFirestore(app);
+} catch (e) {
+  try {
+    resolvedAdminDb = getFirestore(app);
+  } catch (err) {
+    console.warn("Could not initialize adminDb:", err);
+  }
+}
+export const adminDb = resolvedAdminDb;
 
 export const adminStorage = getStorage(app);
 

@@ -53,16 +53,7 @@ import {
 export function App() {
   // Fast local storage state setup without page reload
   useEffect(() => {
-    if (!localStorage.getItem('wiped_mock_data_final_v16')) {
-      localStorage.removeItem('copo_places');
-      localStorage.removeItem('copo_videos');
-      localStorage.removeItem('copo_clubs');
-      localStorage.removeItem('copo_notifications');
-      localStorage.removeItem('copo_messages');
-      localStorage.removeItem('copo_deleted_videos');
-      localStorage.removeItem('copo_deleted_places');
-      localStorage.setItem('wiped_mock_data_final_v16', 'true');
-    }
+    // Preserved: Do not clear user videos or data
   }, []);
 
   // 1. Core State with LocalStorage Persistence
