@@ -51,7 +51,7 @@ export const CopoCreateModal: React.FC<CopoCreateModalProps> = ({
   currentUser,
   onAddPlace
 }) => {
-  const [step, setStep] = useState<1 | 2>(preselectedPlace ? 2 : 1);
+  const [step, setStep] = useState<1 | 2>(1);
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(preselectedPlace || null);
   const [searchQuery, setSearchQuery] = useState("");
   const [rating, setRating] = useState<number>(0);
@@ -134,7 +134,7 @@ export const CopoCreateModal: React.FC<CopoCreateModalProps> = ({
   useEffect(() => {
     if (preselectedPlace) {
       setSelectedPlace(preselectedPlace);
-      if (isOpen) setStep(2);
+      if (isOpen) setStep(1);
     }
   }, [preselectedPlace, isOpen]);
 
