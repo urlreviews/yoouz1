@@ -10,9 +10,7 @@ const targetConstraint = `      const constraints: MediaStreamConstraints = {
 
 const newConstraint = `      const constraints: MediaStreamConstraints = {
         video: {
-          facingMode: "user",
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
+          facingMode: "user"
         },`;
 
 code = code.replace(targetConstraint, newConstraint);

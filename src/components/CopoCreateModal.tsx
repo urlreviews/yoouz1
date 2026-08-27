@@ -419,9 +419,7 @@ export const CopoCreateModal: React.FC<CopoCreateModalProps> = ({
 
       const constraints: MediaStreamConstraints = {
         video: {
-          facingMode: "user",
-          width: { ideal: 1080 },
-          height: { ideal: 1920 }
+          facingMode: "user"
         },
         audio: {
           echoCancellation: true,
@@ -457,7 +455,7 @@ export const CopoCreateModal: React.FC<CopoCreateModalProps> = ({
       // If it's an AbortError from play(), we don't necessarily want to treat it as a camera failure
       if (err.name === "AbortError") return;
 
-      console.error("Camera access error:", err);
+      console.warn("Camera access error (expected if denied):", err);
       try {
         const fallbackStream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: "user" },
@@ -485,7 +483,7 @@ export const CopoCreateModal: React.FC<CopoCreateModalProps> = ({
         
         startFaceDetectionLoop();
       } catch (fallbackErr) {
-        console.error("Fallback camera access error:", fallbackErr);
+        console.warn("Fallback camera access error (expected if denied):", fallbackErr);
         
         // Canvas Simulation Stream Fallback so user is never blocked by permission denial in restricted iframes
         try {

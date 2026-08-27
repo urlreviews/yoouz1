@@ -4107,7 +4107,7 @@ Return JSON:
             'Accept-Language': 'en-US,en;q=0.9'
           },
           redirect: 'follow',
-          signal: AbortSignal.timeout(6000)
+          signal: (AbortSignal as any).timeout ? AbortSignal.timeout(6000) : undefined
         });
         
         if (fetchResponse.ok) {
@@ -4475,7 +4475,7 @@ Return JSON:
           siteName = domain;
         }
       } catch (e) {
-        console.warn('Metadata fetch error:', e.message);
+        // Silently fallback if metadata fetch fails
         title = domain;
         siteName = domain;
       }
