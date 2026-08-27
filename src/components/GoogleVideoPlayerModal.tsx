@@ -362,8 +362,8 @@ export const GoogleVideoPlayerModal: React.FC<GoogleVideoPlayerModalProps> = ({
             <button
               onClick={() => {
                 if (navigator.share) {
-                  const handle = currentReview.author?.handle || currentReview.author?.name?.replace(/\s+/g, "").toLowerCase() || "user";
-                  const shareUrl = `${window.location.origin}/@${handle}/video/${currentReview.id}`;
+                  const handle = currentReview.author?.name || currentReview.author?.name?.replace(/\s+/g, "").toLowerCase() || "user";
+                  const shareUrl = `${window.location.origin}/creator/${(currentReview.author?.name || "user").replace(/\s+/g, "").toLowerCase()}/video/${currentReview.id}`;
                   navigator.share({ title: currentReview.placeName, url: shareUrl }).catch(() => {});
                 }
               }}

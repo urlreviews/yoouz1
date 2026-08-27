@@ -13,7 +13,8 @@ import {
   Play,
   Film,
   Sparkles,
-  Star
+  Star,
+  ChevronLeft
 } from "lucide-react";
 import { CopoNotification, UserProfile, VideoReview } from "../types";
 import { CopoAuthPrompt } from "./CopoGoogleAuthModal";
@@ -27,6 +28,7 @@ interface CopoNotificationsViewProps {
   onOpenLegal?: (tab: "terms" | "privacy") => void;
   onSelectNotificationVideo: (videoId?: string) => void;
   onNavigateToMessages?: () => void;
+  onNavigateHome?: () => void;
   onUpdateNotifications?: (updated: CopoNotification[]) => void;
   onMarkRead?: (id: string) => void;
   onMarkAllRead?: () => void;
@@ -46,6 +48,7 @@ export const CopoNotificationsView: React.FC<CopoNotificationsViewProps> = ({
   onOpenLegal,
   onSelectNotificationVideo,
   onNavigateToMessages,
+  onNavigateHome,
   onUpdateNotifications,
   onMarkRead,
   onMarkAllRead,
@@ -58,7 +61,7 @@ export const CopoNotificationsView: React.FC<CopoNotificationsViewProps> = ({
   // Unauthenticated Gating View
   if (!currentUser) {
     return (
-      <div className="flex-1 h-full overflow-y-auto bg-zinc-950 md:bg-white text-white md:text-zinc-900 flex flex-col justify-between" style={{ paddingBottom: 'calc(5.5rem + env(safe-area-inset-bottom, 0px))' }}>
+      <div className="flex-1 h-full overflow-y-auto bg-zinc-950 md:bg-white text-white md:text-zinc-900 flex flex-col justify-between pb-32 md:pb-6" >
         <CopoAuthPrompt
           intent="notifications"
           onOpenHelp={onOpenHelp}
@@ -292,6 +295,15 @@ export const CopoNotificationsView: React.FC<CopoNotificationsViewProps> = ({
         {/* Native Mobile / Desktop Header */}
         <div className="flex items-center justify-between gap-3 pt-1 pb-1">
           <div className="flex items-center gap-3">
+            {onNavigateHome && (
+              <button
+                onClick={onNavigateHome}
+                className="w-9 h-9 rounded-full bg-zinc-900 md:bg-zinc-100 hover:bg-zinc-800 md:hover:bg-zinc-200 text-zinc-300 md:text-zinc-700 flex items-center justify-center transition-colors cursor-pointer shrink-0 active:scale-95 shadow-sm border border-zinc-800 md:border-zinc-200"
+                title="Back to Feed"
+              >
+                <ChevronLeft className="w-5 h-5 stroke-[2.5]" />
+              </button>
+            )}
             <div className="w-10 h-10 rounded-2xl bg-[#1a73e8] text-white flex items-center justify-center shadow-md shadow-blue-500/20 shrink-0">
               <Bell className="w-5 h-5 stroke-[2.5]" />
             </div>

@@ -31,6 +31,7 @@ import { getPlaceLogoUrl, getCleanLogoUrl } from "../utils/logoUtils";
 import { initFaceDetection, detectFaceInVideo } from "../utils/faceDetector";
 import { formatBusinessName } from "../utils/placeUtils";
 import { CopoMobileSearchView } from "./CopoMobileSearchView";
+import { triggerHaptic } from "../utils/haptics";
 
 interface CopoCreateModalProps {
   isOpen: boolean;
@@ -759,6 +760,7 @@ export const CopoCreateModal: React.FC<CopoCreateModalProps> = ({
       audioContextRef.current.close().catch(() => {});
     }
     setIsWaitingForVoice(false);
+    triggerHaptic("heavy");
     startActualRecording();
   };
 
@@ -767,6 +769,7 @@ export const CopoCreateModal: React.FC<CopoCreateModalProps> = ({
       startCamera();
       return;
     }
+    triggerHaptic("heavy");
     chunksRef.current = [];
     const stream = videoRef.current.srcObject as MediaStream;
     try {
@@ -836,6 +839,7 @@ export const CopoCreateModal: React.FC<CopoCreateModalProps> = ({
 
   const handleStopRecording = () => {
     if (mediaRecorderRef.current && isRecordingRef.current) {
+      triggerHaptic("heavy");
       try {
         if (mediaRecorderRef.current.state === "recording") {
           mediaRecorderRef.current.requestData();
@@ -935,11 +939,11 @@ export const CopoCreateModal: React.FC<CopoCreateModalProps> = ({
       placeCity: selectedPlace.city || "Online",
       placeRating: rating || 5,
       placeWebsite: selectedPlace.website || "",
-      placeLogoUrl: getPlaceLogoUrl(selectedPlace) || selectedPlace.logoUrl || "",
+      placeLogoUrl: getPlaceLogoUrl(selectedPlace) || selectedPlace.logoUrl || selectedPlace.avatarUrl || "",
       placeBannerUrl: selectedPlace.bannerUrl || selectedPlace.ogImage || "",
       author: {
         name: currentUser?.name || "Verified Reviewer",
-        handle: currentUser?.email ? `@${currentUser.email.split("@")[0]}` : "@yoouz_user",
+        //handle: currentUser?.email ? `@${currentUser.email.split("@")[0]}` : "@yoouz_user",
         avatar: currentUser?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser?.name || "User")}&background=1a73e8&color=fff&bold=true&size=128`,
         isLocalGuide: true,
         localGuideLevel: 7,
@@ -1196,7 +1200,7 @@ export const CopoCreateModal: React.FC<CopoCreateModalProps> = ({
                     domain={selectedPlace.brandDomain}
                     name={selectedPlace.name}
                     website={selectedPlace.website}
-                    logoUrl={selectedPlace.logoUrl}
+                    logoUrl={selectedPlace.logoUrl || selectedPlace.avatarUrl}
                     bannerUrl={selectedPlace.bannerUrl || selectedPlace.ogImage}
                     className="w-14 h-14 rounded-xl border border-zinc-800 md:border-zinc-200 bg-white overflow-hidden flex items-center justify-center p-1 shrink-0"
                     imageClassName="w-full h-full object-contain rounded-lg"
@@ -1334,7 +1338,17 @@ export const CopoCreateModal: React.FC<CopoCreateModalProps> = ({
                   <div className="flex items-center gap-2 pointer-events-auto">
                     <div className="px-4 py-2 rounded-full bg-black/40 backdrop-blur-xl border border-white/10 text-white font-bold text-xs flex items-center gap-2.5 shadow-lg">
                       <div className="flex items-center gap-1.5 border-r border-white/10 pr-2.5">
-                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse hidden sm:block" />
+                        <CopoBrandLogo
+                          domain={selectedPlace?.brandDomain}
+                          name={selectedPlace?.name}
+                          website={selectedPlace?.website}
+                          logoUrl={selectedPlace?.logoUrl || selectedPlace?.avatarUrl}
+                          bannerUrl={selectedPlace?.bannerUrl || selectedPlace?.ogImage}
+                          className="w-6 h-6 rounded-md bg-white border border-white/20 overflow-hidden flex items-center justify-center shrink-0 p-0.5 shadow-sm"
+                          imageClassName="w-full h-full object-contain rounded-[3px]"
+                          fallbackTextClassName="font-extrabold text-[10px] text-white"
+                        />
                         <span className="truncate max-w-[140px] sm:max-w-[200px] tracking-tight">{formatBusinessName(selectedPlace?.name)}</span>
                       </div>
                       <div className="flex items-center gap-1 bg-amber-400/20 px-2 py-0.5 rounded-full border border-amber-400/30">
@@ -1495,7 +1509,17 @@ export const CopoCreateModal: React.FC<CopoCreateModalProps> = ({
                   <div className="flex items-center gap-2 pointer-events-auto">
                     <div className="px-4 py-2 rounded-full bg-black/40 backdrop-blur-xl border border-white/10 text-white text-xs font-bold flex items-center gap-2.5 shadow-2xl">
                       <div className="flex items-center gap-1.5 border-r border-white/10 pr-2.5">
-                        <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                        <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse hidden sm:block" />
+                        <CopoBrandLogo
+                          domain={selectedPlace?.brandDomain}
+                          name={selectedPlace?.name}
+                          website={selectedPlace?.website}
+                          logoUrl={selectedPlace?.logoUrl || selectedPlace?.avatarUrl}
+                          bannerUrl={selectedPlace?.bannerUrl || selectedPlace?.ogImage}
+                          className="w-6 h-6 rounded-md bg-white border border-white/20 overflow-hidden flex items-center justify-center shrink-0 p-0.5 shadow-sm"
+                          imageClassName="w-full h-full object-contain rounded-[3px]"
+                          fallbackTextClassName="font-extrabold text-[10px] text-white"
+                        />
                         <span className="uppercase tracking-tighter opacity-80">Live</span>
                       </div>
                       <span className="truncate max-w-[140px] sm:max-w-[220px] tracking-tight">{formatBusinessName(selectedPlace?.name)}</span>

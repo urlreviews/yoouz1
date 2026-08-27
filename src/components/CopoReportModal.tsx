@@ -199,7 +199,7 @@ export const CopoReportModal: React.FC<CopoReportModalProps> = ({
       placeName: target.placeName || target.video?.placeName || null,
       placeId: target.placeId || target.video?.placeId || null,
       reportedAuthor: target.author?.name || target.video?.author.name || null,
-      reportedHandle: target.author?.handle || target.video?.author.handle || null,
+      reportedHandle: target.author?.name || target.video?.author.name || null,
       category: selectedCategory.title,
       subcategory: selectedSubcategory,
       details: additionalDetails.trim(),
@@ -235,7 +235,7 @@ export const CopoReportModal: React.FC<CopoReportModalProps> = ({
       `Hello Yoouz Moderation Team,\n\nI would like to report the following content:\n\n` +
         `• Target Type: ${target.type}\n` +
         `• Place / Business: ${target.placeName || target.video?.placeName || "N/A"}\n` +
-        `• Creator Handle: ${target.author?.handle || target.video?.author.handle || "N/A"}\n` +
+        `• Creator Handle: ${target.author?.name || target.video?.author.name || "N/A"}\n` +
         `• Video ID: ${target.video?.id || "N/A"}\n` +
         `• Category: ${selectedCategory?.title || "N/A"}\n` +
         `• Specific Scenario: ${selectedSubcategory || "N/A"}\n` +
@@ -330,7 +330,7 @@ export const CopoReportModal: React.FC<CopoReportModalProps> = ({
                     {target.placeName || target.video?.placeName || target.author?.name || "Video Review"}
                   </p>
                   <p className="text-zinc-500 text-[11px] truncate">
-                    {target.author?.handle || target.video?.author.handle || "By Verified Reviewer"}
+                    {target.author?.name || target.video?.author.name || "By Verified Reviewer"}
                   </p>
                 </div>
               </div>

@@ -24,6 +24,7 @@ import { CopoMessagesView } from "./components/CopoMessagesView";
 import { CopoClubsView } from "./components/CopoClubsView";
 import { CopoFollowingView } from "./components/CopoFollowingView";
 import { CopoDiscoverView } from "./components/CopoDiscoverView";
+import { CopoMobileNavDrawer } from "./components/CopoMobileNavDrawer";
 import { CopoAdminPanel } from "./components/CopoAdminPanel";
 import { CopoGoogleAuthModal, AuthIntent, CopoAuthPrompt } from "./components/CopoGoogleAuthModal";
 import { CopoLegalModal } from "./components/CopoLegalModal";
@@ -122,6 +123,7 @@ export function App() {
   const [isReportModalOpen, setIsReportModalOpen] = useState<boolean>(false);
   const [activeReportTarget, setActiveReportTarget] = useState<ReportTarget | null>(null);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState<boolean>(false);
+  const [isMobileNavDrawerOpen, setIsMobileNavDrawerOpen] = useState<boolean>(false);
   const [hiddenVideoIds, setHiddenVideoIds] = useState<string[]>(() => {
     try {
       return JSON.parse(localStorage.getItem("yoouz_hidden_videos") || "[]");
@@ -253,7 +255,7 @@ export function App() {
           const rawParam = decodeURIComponent(creatorParam).replace(/^@+/, "").toLowerCase().trim();
           const matchingVid = videosRef.current.find((v) => {
             if (!v.author) return false;
-            const h = (v.author.handle || "").replace(/^@+/, "").toLowerCase().trim();
+            const h = (v.author.name || "").replace(/^@+/, "").toLowerCase().trim();
             const n = (v.author.name || "")
               .toLowerCase()
               .trim()
@@ -265,7 +267,7 @@ export function App() {
           });
           const authorObj: VideoAuthor = matchingVid?.author || {
             name: rawParam.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" "),
-            handle: rawParam,
+            //handle: rawParam,
             avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${rawParam}`,
             isVerified: true,
             isFollowed: false
@@ -497,7 +499,7 @@ export function App() {
         const place = places.find(p => p.id === selectedPlaceIdForDrawer);
         title = place ? `${place.name} - Real Video Reviews & Ratings | Yoouz` : "Business Profile | Yoouz";
       } else if (selectedAuthorForDrawer) {
-        const cleanSlug = (selectedAuthorForDrawer.name || selectedAuthorForDrawer.handle || "reviewer")
+        const cleanSlug = (selectedAuthorForDrawer.name || selectedAuthorForDrawer.name || "reviewer")
           .toLowerCase()
           .trim()
           .replace(/^@+/, "")
@@ -534,7 +536,7 @@ export function App() {
         path = "/more";
         title = "Settings & Community | Yoouz";
       } else if (activeSection === "profile" && currentUser) {
-        const cleanSlug = (currentUser.name || currentUser.handle || currentUser.email?.split('@')[0] || "user")
+        const cleanSlug = (currentUser.name || currentUser.name || currentUser.email?.split('@')[0] || "user")
           .toLowerCase()
           .trim()
           .replace(/^@+/, "")
@@ -672,7 +674,7 @@ export function App() {
                 
                 // Instantly re-hydrate existing places and videos with the fresh follow state
                 setPlaces(prev => prev.map(p => ({ ...p, isFollowed: fPlaces.includes(p.id) })));
-                setVideos(prev => prev.map(v => ({ ...v, author: { ...v.author, isFollowed: fAuthors.includes(v.author.handle) } })));
+                setVideos(prev => prev.map(v => ({ ...v, author: { ...v.author, isFollowed: fAuthors.includes(v.author.name) } })));
                 
               } catch (e) {}
 
@@ -1052,10 +1054,30 @@ export function App() {
   };
 
   const handleStartChat = async (senderId: string, senderName: string, senderAvatar: string) => {
+    // Check if target recipient is an unclaimed business
+    const matchingPlace = places.find(
+      (p) =>
+        p.id === senderId ||
+        (p.name && senderName && p.name.toLowerCase() === senderName.toLowerCase())
+    );
+    if (matchingPlace) {
+      const isPlaceClaimed = Boolean(
+        matchingPlace.isClaimed ||
+        (matchingPlace.claimedByEmail && matchingPlace.claimedByEmail.trim() !== "") ||
+        matchingPlace.subscriptionPlan === "pro" ||
+        matchingPlace.subscriptionPlan === "premium"
+      );
+      if (!isPlaceClaimed) {
+        setSelectedPlaceIdForDrawer(matchingPlace.id);
+        setActiveSection("home");
+        return;
+      }
+    }
+
     const existingThread = messages.find(
       (m) =>
         m.senderId === senderId ||
-        (m.senderName && m.senderName.toLowerCase() === senderName.toLowerCase())
+        (m.senderName && senderName && m.senderName.toLowerCase() === senderName.toLowerCase())
     );
 
     setActiveSection("messages");
@@ -1239,7 +1261,7 @@ export function App() {
 
   const currentFeedContextKey = useMemo(() => {
     if (isPlaceView) return `place_${drawerPlace?.id || selectedPlaceIdForDrawer}`;
-    if (isCreatorView) return `creator_${selectedAuthorForDrawer?.handle || selectedAuthorForDrawer?.name}`;
+    if (isCreatorView) return `creator_${selectedAuthorForDrawer?.name || selectedAuthorForDrawer?.name}`;
     if (fullscreenFeedContext) return `fullscreen_${fullscreenFeedContext.type}_${fullscreenFeedContext.id}`;
     return `section_${activeSection}_${activeSubTab}`;
   }, [isPlaceView, drawerPlace, selectedPlaceIdForDrawer, isCreatorView, selectedAuthorForDrawer, fullscreenFeedContext, activeSection, activeSubTab]);
@@ -1248,13 +1270,13 @@ export function App() {
     let filtered = videos;
     if (!currentUser) {
       // If user isn't explicitly signed in, show reviews created in this session or marked 'me'
-      filtered = videos.filter((v) => v.author?.handle === "me" || v.userId === "me" || v.id.startsWith("rev-"));
+      filtered = videos.filter((v) => v.author?.name === "me" || v.userId === "me" || v.id.startsWith("rev-"));
     } else {
       filtered = videos.filter((v) => {
         // Robust author match using placeUtils
         if (isAuthorMatch(v, currentUser)) return true;
         // Author handle = "me"
-        if (v.author?.handle === "me" || v.userId === "me") return true;
+        if (v.author?.name === "me" || v.userId === "me") return true;
         // User recorded video review check
         if (v.id.startsWith("rev-")) return true;
         return false;
@@ -1358,11 +1380,11 @@ export function App() {
     if (source === "creator" || isCreatorView) {
       const author = targetVid.author || selectedAuthorForDrawer;
       if (!author) return;
-      const cleanHandle = (author.handle || author.name || "creator").replace(/^@+/, "");
-      const authorDisplay = author.name || `@${cleanHandle}`;
+      const cleanHandle = (author.name || author.name || "creator").replace(/^@+/, "");
+      const authorDisplay = author.name || cleanHandle;
       setFullscreenFeedContext({
         type: "creator",
-        id: author.handle || author.name,
+        id: author.name || author.name,
         title: authorDisplay,
         authorData: author
       });
@@ -1484,11 +1506,11 @@ export function App() {
       setIsAuthModalOpen(true);
       return;
     }
-    const handle = currentUser.handle || currentUser.email?.split("@")[0] || "me";
+    const handle = currentUser.name || currentUser.email?.split("@")[0] || "me";
     window.history.pushState(null, "", "/@" + handle);
     setSelectedPlaceIdForDrawer(null);
     setSelectedAuthorForDrawer({
-      handle: handle,
+      //handle: handle,
       name: currentUser.name || "Reviewer",
       avatar: currentUser.avatar || "",
       isVerified: true,
@@ -1579,10 +1601,10 @@ export function App() {
         const targetAuthor = targetVid.author;
         const recipientEmail =
           targetVid.userId ||
-          (targetAuthor?.handle ? targetAuthor.handle.replace(/^@/, "") : "") ||
+          (targetAuthor?.name ? targetAuthor.name.replace(/^@/, "") : "") ||
           targetVid.userEmail ||
           "";
-        const recipientHandle = targetAuthor?.handle || "";
+        const recipientHandle = targetAuthor?.name || "";
 
         sendSocialNotification({
           recipientEmail,
@@ -1590,7 +1612,7 @@ export function App() {
           type: "like",
           user: {
             name: currentUser.name,
-            handle: currentUser.email ? currentUser.email.split("@")[0] : currentUser.name,
+            //handle: currentUser.email ? currentUser.email.split("@")[0] : currentUser.name,
             avatar: currentUser.avatar,
             email: currentUser.email
           },
@@ -1674,10 +1696,10 @@ export function App() {
       const targetAuthor = video.author;
       const recipientEmail =
         video.userId ||
-        (targetAuthor?.handle ? targetAuthor.handle.replace(/^@/, "") : "") ||
+        (targetAuthor?.name ? targetAuthor.name.replace(/^@/, "") : "") ||
         video.userEmail ||
         "";
-      const recipientHandle = targetAuthor?.handle || "";
+      const recipientHandle = targetAuthor?.name || "";
 
       sendSocialNotification({
         recipientEmail,
@@ -1685,7 +1707,7 @@ export function App() {
         type: "repost",
         user: {
           name: currentUser.name,
-          handle: currentUser.email ? currentUser.email.split("@")[0] : currentUser.name,
+          //handle: currentUser.email ? currentUser.email.split("@")[0] : currentUser.name,
           avatar: currentUser.avatar,
           email: currentUser.email
         },
@@ -1698,16 +1720,21 @@ export function App() {
   };
 
   const handleToggleFollow = (authorHandle: string) => {
+    if (!currentUser) {
+      setAuthIntent('following');
+      setIsAuthModalOpen(true);
+      return;
+    }
     let newFollowState = true;
     
     setVideos((prev) => {
-      const firstMatch = prev.find(v => v.author.handle === authorHandle);
+      const firstMatch = prev.find(v => v.author.name === authorHandle);
       if (firstMatch) {
         newFollowState = !firstMatch.author.isFollowed;
       }
 
       return prev.map((v) => {
-        if (v.author.handle === authorHandle) {
+        if (v.author.name === authorHandle) {
           return { ...v, author: { ...v.author, isFollowed: newFollowState } };
         }
         return v;
@@ -1730,7 +1757,7 @@ export function App() {
     } catch(e) {}
     
     setSelectedAuthorForDrawer((prev) => {
-      if (prev && prev.handle === authorHandle) {
+      if (prev && prev.name === authorHandle) {
         return { ...prev, isFollowed: newFollowState };
       }
       return prev;
@@ -1744,7 +1771,7 @@ export function App() {
         type: "follow",
         user: {
           name: currentUser.name,
-          handle: currentUser.email ? currentUser.email.split("@")[0] : currentUser.name,
+          //handle: currentUser.email ? currentUser.email.split("@")[0] : currentUser.name,
           avatar: currentUser.avatar,
           email: currentUser.email
         },
@@ -1755,6 +1782,11 @@ export function App() {
 
   // Handle Follow Place (Business)
   const handleToggleFollowPlace = (placeId: string) => {
+    if (!currentUser) {
+      setAuthIntent('following');
+      setIsAuthModalOpen(true);
+      return;
+    }
     let newFollowState = true;
     setPlaces((prev) => {
       const updated = prev.map((p) => {
@@ -1789,7 +1821,6 @@ export function App() {
     text: string,
     options?: {
       replyToId?: string;
-      replyToHandle?: string;
       postAsOwner?: boolean;
       postAsCreator?: boolean;
     }
@@ -1836,7 +1867,6 @@ export function App() {
       replies: []
     };
     if (options?.replyToId) newCommentItem.replyToId = options.replyToId;
-    if (options?.replyToHandle) newCommentItem.replyToHandle = options.replyToHandle;
 
     let nextComments: ReviewComment[] = [];
     if (options?.replyToId) {
@@ -1906,15 +1936,10 @@ export function App() {
       const targetAuthor = targetVid.author;
       let recipientEmail =
         targetVid.userId ||
-        (targetAuthor?.handle ? targetAuthor.handle.replace(/^@/, "") : "") ||
+        (targetAuthor?.name ? targetAuthor.name.replace(/^@/, "") : "") ||
         targetVid.userEmail ||
         "";
-      let recipientHandle = targetAuthor?.handle || "";
-
-      if (options?.replyToHandle) {
-        recipientHandle = options.replyToHandle;
-        recipientEmail = options.replyToHandle.replace(/^@/, "");
-      }
+      let recipientHandle = targetAuthor?.name || "";
 
       sendSocialNotification({
         recipientEmail,
@@ -1922,7 +1947,7 @@ export function App() {
         type: "comment",
         user: {
           name: currentUser.name,
-          handle: currentUser.email ? currentUser.email.split("@")[0] : currentUser.name,
+          //handle: currentUser.email ? currentUser.email.split("@")[0] : currentUser.name,
           avatar: currentUser.avatar,
           email: currentUser.email
         },
@@ -2455,7 +2480,7 @@ export function App() {
       });
     }
     if (target.author) {
-      handleBlockUser(target.author.handle || target.author.name, target.author.name);
+      handleBlockUser(target.author.name || target.author.name, target.author.name);
     }
   };
 
@@ -2660,7 +2685,7 @@ export function App() {
               onGoBack={fullscreenFeedContext ? handleFeedGoBack : undefined}
               feedContextTitle={fullscreenFeedContext?.title}
               onGoHome={handleGoHome}
-              onOpenMenu={() => setActiveSection("more")}
+              onOpenMenu={() => setIsMobileNavDrawerOpen(true)}
             />
         )}
 
@@ -2770,6 +2795,7 @@ export function App() {
                 onToggleFollow={handleToggleFollow}
                 onStartChat={handleStartChat}
                 onSelectVideo={handleSelectVideoById}
+                onNavigateHome={handleGoHome}
                 onOpenAuth={() => {
                   setAuthIntent('general');
                   setIsAuthModalOpen(true);
@@ -2823,15 +2849,15 @@ export function App() {
                   try {
                     const allU = allRegisteredUsers || [];
                     for (const u of allU) {
-                      const recEmail = u.email || u.handle || u.id;
+                      const recEmail = u.email || u.name || u.id;
                       if (recEmail) {
                         sendSocialNotification({
                           recipientEmail: recEmail,
-                          recipientHandle: u.handle || recEmail,
+                          recipientHandle: u.name || recEmail,
                           type: "message",
                           user: {
                             name: "Yoouz Admin Team",
-                            handle: "yoouz",
+                            //handle: "yoouz",
                             avatar: "https://ui-avatars.com/api/?name=Yoouz+Admin&background=1a73e8&color=fff&bold=true",
                             email: "admin@yoouz.com"
                           },
@@ -2864,6 +2890,7 @@ export function App() {
                 onSuccessAuth={(user) => setCurrentUser(user)}
                 onSelectNotificationVideo={(vidId) => vidId && handleSelectVideoById(vidId)}
                 onNavigateToMessages={() => setActiveSection("messages")}
+                onNavigateHome={handleGoHome}
                 onUpdateNotifications={setNotifications}
                 onMarkRead={markNotificationAsRead}
                 onMarkAllRead={() => {
@@ -2898,6 +2925,7 @@ export function App() {
                 onOpenReport={handleOpenReport}
                 onSelectPlace={handleOpenPlaceDrawer}
                 onNavigateToNotifications={() => setActiveSection("notifications")}
+                onNavigateHome={handleGoHome}
                 unreadNotifsCount={currentUser ? notifications.filter((n) => !n.isRead).length : 0}
                 blockedUserIds={blockedUserIds}
                 onBlockUser={handleBlockUser}
@@ -2950,10 +2978,7 @@ export function App() {
                 onSuccessAuth={(user) => setCurrentUser(user)}
                 onSelectVideo={handleSelectVideoById}
                 onRemoveBookmark={handleToggleBookmark}
-                onNavigateHome={() => {
-                  setActiveSection("home");
-                  setActiveSubTab("discover");
-                }}
+                onNavigateHome={handleGoHome}
               />
             )}
 
@@ -2972,6 +2997,7 @@ export function App() {
                 onSuccessAuth={(user) => setCurrentUser(user)}
                 onSelectVideo={handleSelectVideoById}
                 onOpenPlace={handleOpenPlaceDrawer}
+                onNavigateHome={handleGoHome}
                 onOpenCreator={(author) => {
                   setSelectedPlaceIdForDrawer(null);
                   setSelectedAuthorForDrawer(author);
@@ -2984,7 +3010,7 @@ export function App() {
 
             {/* Profile View (Unauthenticated Only) */}
             {activeSection === "profile" && !currentUser && (
-              <div className="flex-1 h-full overflow-y-auto bg-zinc-950 md:bg-white flex flex-col justify-between" style={{ paddingBottom: 'calc(5.5rem + env(safe-area-inset-bottom, 0px))' }}>
+              <div className="flex-1 h-full overflow-y-auto bg-zinc-950 md:bg-white flex flex-col justify-between pb-32 md:pb-6" >
                 <CopoAuthPrompt
                   intent="profile"
                   onOpenHelp={() => setActiveSection('more')}
@@ -3087,7 +3113,7 @@ export function App() {
           // Then open the creator profile
           setSelectedAuthorForDrawer({
             name: name || handle,
-            handle: handle,
+            //handle: handle,
             avatar: avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${handle}`,
             isVerified: false,
             isFollowed: false
@@ -3115,6 +3141,78 @@ export function App() {
           setActiveReportTarget(null);
         }}
         onBlockOrHide={handleBlockOrHide}
+      />
+
+      {/* Mobile Navigation Drawer */}
+      <CopoMobileNavDrawer
+        isOpen={isMobileNavDrawerOpen}
+        onClose={() => setIsMobileNavDrawerOpen(false)}
+        activeSection={activeSection}
+        onSelectSection={(section) => {
+          if (section === "home") {
+            setSelectedPlaceIdForDrawer(null);
+            setSelectedAuthorForDrawer(null);
+            setCurrentVideoIndex(0);
+            setActiveSubTab("discover");
+            setActiveSection("home");
+            return;
+          }
+          if (section === "discover") {
+            setSelectedPlaceIdForDrawer(null);
+            setSelectedAuthorForDrawer(null);
+            setActiveSection("discover");
+            return;
+          }
+          if (section === "profile") {
+            handleGoToProfile();
+            return;
+          }
+          if (section === "search") {
+            setIsSearchModalOpen(true);
+            return;
+          }
+          if ((section as string) === "business") {
+            setSelectedPlaceIdForDrawer(null);
+            setSelectedAuthorForDrawer(null);
+            setActiveSection("business");
+            window.history.pushState(null, "", "/business");
+            return;
+          }
+          if (!currentUser && ["messages", "notifications", "bookmarks", "following"].includes(section as string)) {
+            setAuthIntent(section as AuthIntent);
+            setIsAuthModalOpen(true);
+            return;
+          }
+          setSelectedPlaceIdForDrawer(null);
+          setSelectedAuthorForDrawer(null);
+          setActiveSection(section);
+        }}
+        currentUser={currentUser}
+        unreadNotifsCount={currentUser ? notifications.filter((n) => !n.isRead).length : 0}
+        unreadMessagesCount={currentUser ? messages.reduce((acc, m) => acc + (m.unreadCount || 0), 0) : 0}
+        onOpenCreateModal={() => {
+          if (!currentUser) {
+            setAuthIntent('record');
+            setIsAuthModalOpen(true);
+          } else {
+            setPreselectedPlaceForRecording(null);
+            setIsCreateModalOpen(true);
+          }
+        }}
+        onOpenSearch={() => setIsSearchModalOpen(true)}
+        onOpenAuth={(intent) => {
+          setAuthIntent((intent as AuthIntent) || 'general');
+          setIsAuthModalOpen(true);
+        }}
+        onOpenLegal={handleOpenLegal}
+        onSignOut={async () => {
+          await logOutUser();
+          setCurrentUser(null);
+          try {
+            localStorage.removeItem("copo_user_profile");
+          } catch (e) {}
+        }}
+        onOpenEditProfile={handleGoToProfile}
       />
 
       {/* Mobile Search Overlay */}

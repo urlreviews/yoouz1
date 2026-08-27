@@ -33,6 +33,11 @@ import {
   UserPlus,
   UserCheck,
   MessageSquare,
+  MessageSquareOff,
+  ShieldAlert,
+  Building2,
+  ArrowRight,
+  ExternalLink,
   Flag,
   Heart
 } from "lucide-react";
@@ -46,6 +51,8 @@ import { CopoBusinessPricingModal } from "./CopoBusinessPricingModal";
 import { CopoShareModal } from "./CopoShareModal";
 import { CopoBusinessClaimModal } from "./CopoBusinessClaimModal";
 import { SEOTags } from "./SEOTags";
+import { triggerHaptic } from "../utils/haptics";
+import { useSwipeDownToDismiss } from "../hooks/useSwipeDownToDismiss";
 
 interface CopoPlaceDrawerProps {
   place: Place | null;
@@ -92,6 +99,7 @@ export const CopoPlaceDrawer: React.FC<CopoPlaceDrawerProps> = ({
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isClaimModalOpen, setIsClaimModalOpen] = useState(false);
+  const [showUnclaimedChatModal, setShowUnclaimedChatModal] = useState(false);
   const [claimAsOwner, setClaimAsOwner] = useState(false);
   const [isPricingModalOpen, setIsPricingModalOpen] = useState(false);
   const [bannerError, setBannerError] = useState(false);
@@ -278,6 +286,12 @@ return () => window.removeEventListener("keydown", handleKeyDown);
     !place.plusCode.includes("849VC9FW")
   );
   const subscriptionPlan = place.subscriptionPlan || "basic";
+  const isClaimed = Boolean(
+    place.isClaimed ||
+    (place.claimedByEmail && place.claimedByEmail.trim() !== "") ||
+    subscriptionPlan === "pro" ||
+    subscriptionPlan === "premium"
+  );
   const hasUpgraded = subscriptionPlan === "pro" || subscriptionPlan === "premium" || (typeof window !== 'undefined' && localStorage.getItem('demo_cta_type') !== null);
 
   const isUserOwner = Boolean(
@@ -364,30 +378,53 @@ return () => window.removeEventListener("keydown", handleKeyDown);
     window.open(url, "_blank");
   };
 
+  const { dragOffsetY, swipeProps } = useSwipeDownToDismiss({
+    onDismiss: onClose,
+    threshold: 60
+  });
+
   return (
     <>
       {/* Mobile Backdrop (Bottom Sheet) */}
-      <div className={`fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden animate-in fade-in duration-200 ${isEditModalOpen ? "hidden" : "block"}`} onClick={onClose} />
+      <div 
+        className={`fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden animate-in fade-in duration-200 ${isEditModalOpen ? "hidden" : "block"}`} 
+        onClick={() => {
+          triggerHaptic("light");
+          onClose();
+        }} 
+      />
 
       <aside
         id="google-maps-business-panel"
-        className={`fixed inset-x-0 bottom-0 md:bottom-auto md:inset-auto md:relative w-full md:w-[400px] lg:w-[430px] h-[100dvh] md:h-screen bg-zinc-950 md:bg-white rounded-none text-white md:text-zinc-900 flex flex-col shadow-none md:shadow-lg border-r border-zinc-800 md:border-zinc-200 shrink-0 overflow-hidden animate-in slide-in-from-bottom md:slide-in-from-left duration-200 select-none overscroll-contain ${isEditModalOpen ? "z-[90] md:z-[90]" : "z-50 md:z-20"}`}
+        style={dragOffsetY > 0 ? { transform: `translateY(${dragOffsetY}px)`, transition: 'none' } : undefined}
+        className={`fixed inset-x-0 bottom-0 md:bottom-auto md:inset-auto md:relative w-full md:w-[350px] lg:w-[430px] h-[100dvh] md:h-[100dvh] bg-zinc-950 md:bg-white rounded-none text-white md:text-zinc-900 flex flex-col shadow-none md:shadow-lg border-r border-zinc-800 md:border-zinc-200 shrink-0 overflow-hidden animate-in slide-in-from-bottom md:slide-in-from-left duration-200 select-none overscroll-contain transition-transform ${isEditModalOpen ? "z-[90] md:z-[90]" : "z-50 md:z-20"}`}
         onWheel={(e) => e.stopPropagation()}
         onTouchMove={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}
       >
         {/* Mobile Pull Handle Indicator */}
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 w-12 h-1.5 bg-white/40 rounded-full z-30 md:hidden shadow-sm mix-blend-difference" />
+        <div 
+          {...swipeProps}
+          className="absolute top-0 left-0 right-0 h-8 flex items-center justify-center z-30 md:hidden cursor-grab active:cursor-grabbing touch-none"
+        >
+          <div className="w-12 h-1.5 bg-white/60 rounded-full shadow-md mix-blend-difference" />
+        </div>
 
         {/* Top Header Banner */}
-        <div className="relative h-48 w-full shrink-0 flex items-center justify-center bg-zinc-950">
+        <div 
+          {...swipeProps}
+          className="relative h-48 w-full shrink-0 flex items-center justify-center bg-zinc-950 touch-pan-y"
+        >
         {/* Close / Exit Button Group */}
         <div className="absolute top-3 right-3 flex items-center gap-2 z-30">
           {/* Report Place Button */}
           {onOpenReport && place && (
             <button
               id="btn-report-place"
-              onClick={() => onOpenReport({ type: "place", placeName: place.name, placeId: place.id })}
+              onClick={() => {
+                triggerHaptic("light");
+                onOpenReport({ type: "place", placeName: place.name, placeId: place.id });
+              }}
               className="w-9 h-9 rounded-full bg-zinc-900/90 md:bg-white/95 shadow-lg flex items-center justify-center text-zinc-300 md:text-zinc-600 hover:text-red-500 md:hover:text-red-600 hover:bg-zinc-800 md:hover:bg-white hover:scale-105 active:scale-95 transition-all cursor-pointer border border-zinc-750 md:border-zinc-200"
               title="Report inaccurate info"
             >
@@ -398,7 +435,10 @@ return () => window.removeEventListener("keydown", handleKeyDown);
           {/* Share Button */}
           <button
             id="btn-share-place"
-            onClick={handleShare}
+            onClick={() => {
+              triggerHaptic("light");
+              handleShare();
+            }}
             className="w-9 h-9 rounded-full bg-zinc-900/90 md:bg-white/95 shadow-lg flex items-center justify-center text-zinc-200 md:text-zinc-800 hover:bg-zinc-800 md:hover:bg-white hover:scale-105 active:scale-95 transition-all cursor-pointer border border-zinc-750 md:border-zinc-200"
             title="Share Business"
           >
@@ -408,7 +448,10 @@ return () => window.removeEventListener("keydown", handleKeyDown);
           {/* Close Button */}
           <button
             id="btn-close-place-drawer"
-            onClick={onClose}
+            onClick={() => {
+              triggerHaptic("light");
+              onClose();
+            }}
             className="w-9 h-9 rounded-full bg-zinc-900/90 md:bg-white/95 shadow-lg flex items-center justify-center text-zinc-200 md:text-zinc-800 hover:bg-zinc-800 md:hover:bg-white hover:scale-105 active:scale-95 transition-all cursor-pointer border border-zinc-750 md:border-zinc-200"
             title="Close business page"
           >
@@ -471,7 +514,11 @@ return () => window.removeEventListener("keydown", handleKeyDown);
           <div className="min-w-0 flex-1 pr-2">
             <h2 className="text-2xl font-bold text-white md:text-zinc-900 tracking-tight leading-tight [overflow-wrap:anywhere] flex items-center flex-wrap gap-x-1.5">
               <span>{formatBusinessName(place.name)}</span>
-              <CheckCircle2 className="w-5 h-5 fill-[#1a73e8] text-white shrink-0" />
+              {isClaimed && (
+                <span title="Verified Business" className="inline-flex">
+                  <CheckCircle2 className="w-5 h-5 fill-[#1a73e8] text-white shrink-0" />
+                </span>
+              )}
             </h2>
           </div>
 
@@ -630,7 +677,21 @@ return () => window.removeEventListener("keydown", handleKeyDown);
             {onStartChat && (
               <button
                 id="btn-chat-business"
-                onClick={() => onStartChat(place.id, place.name, getPlaceLogoUrl(place))}
+                onClick={() => {
+                  triggerHaptic("light");
+                  if (!isClaimed) {
+                    setShowUnclaimedChatModal(true);
+                    return;
+                  }
+
+                  if (isUserOwner) {
+                    setCopiedNotification("This is your business listing. Customer messages appear in your Messages inbox.");
+                    setTimeout(() => setCopiedNotification(""), 4000);
+                    return;
+                  }
+
+                  onStartChat(place.claimedByEmail || place.id, place.name, getPlaceLogoUrl(place));
+                }}
                 className="flex flex-col items-center gap-1.5 text-xs text-blue-400 md:text-[#1a73e8] hover:scale-105 transition-transform group shrink-0 min-w-[58px] cursor-pointer"
                 title={`Chat with ${formatBusinessName(place.name)}`}
               >
@@ -642,36 +703,43 @@ return () => window.removeEventListener("keydown", handleKeyDown);
             )}
           </div>
           
-          {/* CTA Row */}
-          <div className="px-5 py-4 border-b border-zinc-100">
-            {hasUpgraded ? (
-              (() => {
-                const ctaType = typeof window !== 'undefined' ? (localStorage.getItem('demo_cta_type') || 'book_now') : 'book_now';
-                const storedUrl = typeof window !== 'undefined' ? localStorage.getItem('demo_cta_url') : '';
-                const ctaUrl = storedUrl || (hasGenuineWebsite ? place.website : "#");
-                const ctaLabel = ctaType.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-                
-                return (
-                  <a 
-                    href={ctaType === 'call_now' ? `tel:${ctaUrl}` : (ctaUrl || "#")} 
-                    target={ctaType === 'call_now' ? "_self" : "_blank"} 
-                    rel="noreferrer"
-                    className="w-full py-3 bg-[#1a73e8] hover:bg-blue-700 text-white font-bold text-sm rounded-xl shadow-md shadow-blue-500/20 flex items-center justify-center gap-2 transition-all block text-center"
-                  >
-                    {ctaLabel}
-                  </a>
-                );
-              })()
-            ) : isUserOwner ? (
-              <button 
-                onClick={() => setIsPricingModalOpen(true)}
-                className="w-full py-3 bg-zinc-100 hover:bg-zinc-200 text-zinc-900 font-bold text-sm rounded-xl border border-zinc-200 flex items-center justify-center gap-2 transition-all"
-              >
-                <Lock className="w-4 h-4 text-zinc-500" />
-                Unlock "Book Now" Button
-              </button>
-            ) : null}
-          </div>
+          {/* CTA Row - Only rendered when business has upgraded or owner is viewing */}
+          {(hasUpgraded || isUserOwner) && (
+            <div className="px-5 py-3.5 border-b border-zinc-800 md:border-zinc-100">
+              {hasUpgraded ? (
+                (() => {
+                  const ctaType = typeof window !== 'undefined' ? (localStorage.getItem('demo_cta_type') || 'book_now') : 'book_now';
+                  const storedUrl = typeof window !== 'undefined' ? localStorage.getItem('demo_cta_url') : '';
+                  const storedLabel = typeof window !== 'undefined' ? localStorage.getItem('demo_cta_label') : '';
+                  const storedColor = typeof window !== 'undefined' ? (localStorage.getItem('demo_cta_color') || '#1a73e8') : '#1a73e8';
+                  const isPhone = ctaType.includes('call') || storedUrl?.startsWith('tel:') || ctaType === 'emergency_call';
+                  const ctaUrl = storedUrl || (isPhone && (place as any).phone ? `tel:${(place as any).phone}` : (hasGenuineWebsite ? place.website : "#"));
+                  const ctaLabel = storedLabel || ctaType.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                  
+                  return (
+                    <a 
+                      href={isPhone && !ctaUrl.startsWith('tel:') ? `tel:${ctaUrl}` : (ctaUrl || "#")} 
+                      target={isPhone ? "_self" : "_blank"} 
+                      rel="noreferrer"
+                      style={{ backgroundColor: storedColor }}
+                      className="w-full py-3 hover:opacity-90 text-white font-bold text-sm rounded-xl shadow-md flex items-center justify-center gap-2 transition-all block text-center"
+                    >
+                      <span>{ctaLabel}</span>
+                      <ExternalLink className="w-3.5 h-3.5 opacity-80" />
+                    </a>
+                  );
+                })()
+              ) : isUserOwner ? (
+                <button 
+                  onClick={() => setIsPricingModalOpen(true)}
+                  className="w-full py-3 bg-zinc-800 md:bg-zinc-100 hover:bg-zinc-700 md:hover:bg-zinc-200 text-zinc-100 md:text-zinc-900 font-bold text-sm rounded-xl border border-zinc-700 md:border-zinc-200 flex items-center justify-center gap-2 transition-all cursor-pointer"
+                >
+                  <Lock className="w-4 h-4 text-zinc-400 md:text-zinc-500" />
+                  <span>Unlock Call-To-Action (CTA) Button</span>
+                </button>
+              ) : null}
+            </div>
+          )}
           
           {copiedNotification && (
             <div className="px-4 py-2 bg-emerald-50 text-emerald-800 text-xs font-semibold text-center border-y border-emerald-200 animate-in fade-in">
@@ -1217,7 +1285,7 @@ return () => window.removeEventListener("keydown", handleKeyDown);
                       className="w-full py-2.5 rounded-xl bg-blue-950/60 md:bg-blue-50/80 border border-blue-800/60 md:border-blue-200 text-[11px] font-bold text-blue-300 md:text-[#1a73e8] hover:bg-blue-900/60 md:hover:bg-blue-100 transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-xs"
                     >
                       <ShieldCheck className="w-3.5 h-3.5 text-blue-300 md:text-[#1a73e8]" />
-                      Claim & Verify Business (Resend Magic Link)
+                      Claim & Verify Business Listing
                     </button>
                   )}
                 </div>
@@ -1643,6 +1711,67 @@ return () => window.removeEventListener("keydown", handleKeyDown);
           setIsClaimModalOpen(false);
         }}
       />
+
+      {/* Unclaimed Business Chat Notice Modal */}
+      {showUnclaimedChatModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-md bg-zinc-900 md:bg-white rounded-3xl border border-zinc-800 md:border-zinc-200 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6 text-center space-y-4">
+              <div className="w-16 h-16 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400 mx-auto flex items-center justify-center shadow-inner">
+                <MessageSquareOff className="w-8 h-8" />
+              </div>
+
+              <div className="space-y-2">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 text-[10px] font-bold uppercase tracking-wider border border-amber-500/20">
+                  <ShieldAlert className="w-3 h-3" />
+                  <span>Unclaimed Business</span>
+                </div>
+                <h3 className="text-xl font-black text-white md:text-zinc-900 tracking-tight">
+                  Direct Messaging Unavailable
+                </h3>
+                <p className="text-xs text-zinc-300 md:text-zinc-600 leading-relaxed font-medium">
+                  <span className="font-bold text-white md:text-zinc-950">{formatBusinessName(place.name)}</span> has not claimed their official page on Reviuz yet, so they cannot receive or reply to customer messages.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-zinc-950 md:bg-zinc-50 border border-zinc-800 md:border-zinc-200 text-left space-y-2">
+                <div className="flex items-center gap-2 text-xs font-bold text-blue-400 md:text-[#1a73e8]">
+                  <Building2 className="w-4 h-4" />
+                  <span>Are you the owner or manager?</span>
+                </div>
+                <p className="text-[11px] text-zinc-400 md:text-zinc-600 leading-relaxed font-medium">
+                  Claim this listing with your official business email to activate 1-on-1 customer messaging, reply to video reviews, and showcase your profile.
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-2 pt-2">
+                <button
+                  onClick={() => {
+                    setShowUnclaimedChatModal(false);
+                    if (onClaimBusiness) {
+                      onClaimBusiness(place);
+                    } else {
+                      setIsClaimModalOpen(true);
+                    }
+                  }}
+                  className="w-full py-3 px-4 rounded-xl bg-[#1a73e8] hover:bg-[#1557b0] text-white font-bold text-xs shadow-md shadow-[#1a73e8]/25 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+                >
+                  <ShieldCheck className="w-4 h-4" />
+                  <span>Claim & Verify Business</span>
+                  <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                </button>
+
+                <button
+                  onClick={() => setShowUnclaimedChatModal(false)}
+                  className="w-full py-2.5 px-4 rounded-xl text-zinc-400 hover:text-white md:hover:text-zinc-900 text-xs font-bold transition-colors cursor-pointer"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

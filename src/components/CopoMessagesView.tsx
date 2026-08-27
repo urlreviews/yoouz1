@@ -63,6 +63,7 @@ interface CopoMessagesViewProps {
   onBlockUser?: (userId: string, userName: string) => void;
   onUnblockUser?: (userId: string) => void;
   onNavigateToNotifications?: () => void;
+  onNavigateHome?: () => void;
   unreadNotifsCount?: number;
   selectedThreadId?: string;
   onSelectThreadId?: (id: string) => void;
@@ -91,6 +92,7 @@ export const CopoMessagesView: React.FC<CopoMessagesViewProps> = ({
   onBlockUser,
   onUnblockUser,
   onNavigateToNotifications,
+  onNavigateHome,
   unreadNotifsCount = 0,
   selectedThreadId: propSelectedThreadId,
   onSelectThreadId,
@@ -117,6 +119,8 @@ export const CopoMessagesView: React.FC<CopoMessagesViewProps> = ({
   const [isOptionsOpen, setIsOptionsOpen] = useState(false);
   const [showBlockConfirmModal, setShowBlockConfirmModal] = useState(false);
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
+  const [showNewChatModal, setShowNewChatModal] = useState(false);
+  const [newChatSearch, setNewChatSearch] = useState("");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -163,7 +167,102 @@ export const CopoMessagesView: React.FC<CopoMessagesViewProps> = ({
     return messages.find((m) => m.id === selectedThreadId) || messages[0];
   }, [messages, selectedThreadId]);
 
-  // Check if current active sender/participant is blocked
+  // Discover available community members for user-to-user messaging
+  const availableRecipients = useMemo(() => {
+    const list: { id: string; name: string; avatar: string; handle?: string; email?: string; bio?: string }[] = [];
+    const seen = new Set<string>();
+
+    const myEmail = (currentUser?.email || "").toLowerCase().trim();
+    const myName = (currentUser?.name || "").toLowerCase().trim();
+
+    // 1. From allUsers
+    allUsers.forEach((u: any) => {
+      const uId = u.userId || u.id || u.email;
+      const uEmail = (u.email || "").toLowerCase().trim();
+      const uName = u.name || "Reviewer";
+      if (!uId || (uEmail && uEmail === myEmail) || (uName && uName.toLowerCase() === myName)) return;
+      const key = (uEmail || uId).toLowerCase();
+      if (!seen.has(key)) {
+        seen.add(key);
+        list.push({
+          id: uId,
+          name: uName,
+          avatar: u.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(uName)}&background=1a73e8&color=fff`,
+          //handle: u.name || uName.toLowerCase().replace(/\s+/g, ""),
+          email: uEmail,
+          bio: u.bio || "Local Guide & Reviewer"
+        });
+      }
+    });
+
+    // 2. From allVideos authors
+    allVideos.forEach((v) => {
+      if (!v.author) return;
+      const aName = v.author.name;
+      const aId = v.author.id || v.author.userId || v.author.name || aName;
+      const aEmail = (v.author.email || "").toLowerCase().trim();
+      if (!aName || (aEmail && aEmail === myEmail) || aName.toLowerCase() === myName) return;
+      const key = (aEmail || aId || aName).toLowerCase();
+      if (!seen.has(key)) {
+        seen.add(key);
+        list.push({
+          id: aId,
+          name: aName,
+          avatar: v.author.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(aName)}&background=1a73e8&color=fff`,
+          //handle: v.author.name,
+          email: aEmail,
+          bio: v.author.bio || "Community Creator"
+        });
+      }
+    });
+
+    return list;
+  }, [allUsers, allVideos, currentUser]);
+
+  const filteredRecipients = useMemo(() => {
+    if (!newChatSearch.trim()) return availableRecipients;
+    const q = newChatSearch.toLowerCase().trim().replace(/^@/, "");
+    return availableRecipients.filter(
+      (r) =>
+        r.name.toLowerCase().includes(q) ||
+        (r.name && r.name.toLowerCase().includes(q)) ||
+        (r.email && r.email.toLowerCase().includes(q))
+    );
+  }, [availableRecipients, newChatSearch]);
+
+  const handleStartNewUserChat = (recipient: { id: string; name: string; avatar: string; email?: string }) => {
+    // Check if an existing thread exists
+    const existing = messages.find(
+      (m) =>
+        m.senderId === recipient.id ||
+        m.senderId === recipient.email ||
+        (m.senderName && m.senderName.toLowerCase() === recipient.name.toLowerCase())
+    );
+
+    if (existing) {
+      setSelectedThreadId(existing.id);
+      setShowNewChatModal(false);
+      return;
+    }
+
+    const newId = `thread_${Date.now()}`;
+    const newThread: CopoMessage = {
+      id: newId,
+      senderId: recipient.email || recipient.id,
+      senderName: recipient.name,
+      senderAvatar: recipient.avatar,
+      lastMessage: "",
+      timestamp: "Just now",
+      createdAtMs: Date.now(),
+      unreadCount: 0,
+      history: []
+    };
+
+    onUpdateMessages([newThread, ...messages]);
+    setSelectedThreadId(newId);
+    setShowNewChatModal(false);
+  };
+
   const isSenderBlocked = useMemo(() => {
     if (!activeThread) return false;
     const sId = (activeThread.senderId || "").toLowerCase().trim().replace(/^@/, "");
@@ -326,7 +425,7 @@ export const CopoMessagesView: React.FC<CopoMessagesViewProps> = ({
         type: "user",
         author: {
           name: activeThread.senderName,
-          handle: activeThread.senderId || activeThread.senderName.toLowerCase().replace(/\s+/g, ""),
+          //handle: activeThread.senderId || activeThread.senderName.toLowerCase().replace(/\s+/g, ""),
           avatar: activeThread.senderAvatar,
           isVerified: true
         }
@@ -398,8 +497,8 @@ export const CopoMessagesView: React.FC<CopoMessagesViewProps> = ({
     const matchVideo = allVideos.find(
       (v) =>
         (v.author?.name && name && v.author.name.toLowerCase() === name.toLowerCase()) ||
-        (v.author?.handle && name && v.author.handle.toLowerCase() === name.toLowerCase().replace(/^@/, '')) ||
-        (id && v.author?.handle && v.author.handle.toLowerCase() === id.toLowerCase().replace(/^@/, ''))
+        (v.author?.name && name && v.author.name.toLowerCase() === name.toLowerCase().replace(/^@/, '')) ||
+        (id && v.author?.name && v.author.name.toLowerCase() === id.toLowerCase().replace(/^@/, ''))
     );
     if (matchVideo && matchVideo.author) {
       return matchVideo.author;
@@ -416,7 +515,7 @@ export const CopoMessagesView: React.FC<CopoMessagesViewProps> = ({
     if (matchUser) {
       return {
         name: matchUser.name || name || "Reviewer",
-        handle: (matchUser.handle || matchUser.name || name || "reviewer").toLowerCase().replace(/[^a-z0-9]/g, ""),
+        //handle: (matchUser.name || matchUser.name || name || "reviewer").toLowerCase().replace(/[^a-z0-9]/g, ""),
         email: matchUser.email || (id && id.includes('@') ? id : undefined),
         userId: matchUser.userId || matchUser.id || id,
         id: matchUser.id || matchUser.userId || id,
@@ -435,7 +534,7 @@ export const CopoMessagesView: React.FC<CopoMessagesViewProps> = ({
     const cleanHandle = (name || id || "reviewer").toLowerCase().replace(/[^a-z0-9]/g, "");
     return {
       name: name || "Local Guide",
-      handle: cleanHandle || "reviewer",
+      //handle: cleanHandle || "reviewer",
       email: id && id.includes('@') ? id : undefined,
       userId: id,
       id: id,
@@ -460,7 +559,7 @@ export const CopoMessagesView: React.FC<CopoMessagesViewProps> = ({
   // Unauthenticated Gating View
   if (!currentUser) {
     return (
-      <div className="flex-1 h-full overflow-y-auto bg-zinc-950 md:bg-white flex flex-col justify-between" style={{ paddingBottom: 'calc(5.5rem + env(safe-area-inset-bottom, 0px))' }}>
+      <div className="flex-1 h-full overflow-y-auto bg-zinc-950 md:bg-white flex flex-col justify-between pb-32 md:pb-6" >
         <CopoAuthPrompt
           intent="messages"
           onOpenHelp={onOpenHelp}
@@ -473,7 +572,7 @@ export const CopoMessagesView: React.FC<CopoMessagesViewProps> = ({
   }
 
   return (
-    <div className="flex-1 h-full overflow-y-auto bg-zinc-950 md:bg-zinc-50 text-white md:text-zinc-900 p-3 sm:p-4 md:p-8 flex flex-col select-none" style={{ paddingBottom: 'calc(5.5rem + env(safe-area-inset-bottom, 0px))' }}>
+    <div className="flex-1 h-full overflow-y-auto bg-zinc-950 md:bg-zinc-50 text-white md:text-zinc-900 p-3 sm:p-4 md:p-8 flex flex-col select-none" >
       
       {/* Toast alert banner */}
       {toastMessage && (
@@ -488,7 +587,16 @@ export const CopoMessagesView: React.FC<CopoMessagesViewProps> = ({
         {/* Header section matching Google Maps & TikTok Vibe with Sub-Tabs */}
         <div className="flex flex-col gap-3 bg-zinc-900 md:bg-white p-4 sm:p-5 rounded-3xl border border-zinc-800 md:border-zinc-200/80 shadow-xs shrink-0">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2.5">
+              {onNavigateHome && (
+                <button
+                  onClick={onNavigateHome}
+                  className="w-9 h-9 rounded-full bg-zinc-950 md:bg-zinc-100 hover:bg-zinc-800 md:hover:bg-zinc-200 text-zinc-300 md:text-zinc-700 flex items-center justify-center transition-colors cursor-pointer shrink-0 active:scale-95 shadow-sm border border-zinc-800 md:border-zinc-200"
+                  title="Back to Feed"
+                >
+                  <ArrowLeft className="w-5 h-5 stroke-[2.5]" />
+                </button>
+              )}
               <div className="inline-flex items-center p-1 bg-zinc-950 md:bg-zinc-100/90 rounded-2xl border border-zinc-800 md:border-zinc-200">
                 <button
                   id="tab-inbox-messages"
@@ -539,26 +647,51 @@ export const CopoMessagesView: React.FC<CopoMessagesViewProps> = ({
           
           {/* Threads Column (Hidden on mobile if viewing active thread) */}
           <div className={`w-full md:w-80 border-r border-zinc-800 md:border-zinc-200 flex flex-col bg-zinc-950 md:bg-white shrink-0 ${isMobileThreadViewOpen ? "hidden md:flex" : "flex"}`}>
-            {/* Search thread input */}
-            <div className="p-3 sm:p-4 border-b border-zinc-800 md:border-zinc-150">
-              <div className="relative">
+            {/* Search thread input and New Chat button */}
+            <div className="p-3 sm:p-4 border-b border-zinc-800 md:border-zinc-150 flex items-center gap-2">
+              <div className="relative flex-1">
                 <Search className="absolute left-3 top-2.5 w-4 h-4 text-zinc-400" />
                 <input
                   type="text"
-                  placeholder="Search conversations..."
+                  placeholder="Search chats..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full bg-zinc-900 md:bg-zinc-50 text-xs text-white md:text-zinc-900 placeholder-zinc-500 md:placeholder-zinc-400 pl-9 pr-4 py-2 rounded-xl border border-zinc-800 md:border-zinc-200 focus:outline-none focus:border-[#1a73e8] focus:bg-zinc-800 md:focus:bg-white transition-all font-medium"
+                  className="w-full bg-zinc-900 md:bg-zinc-50 text-xs text-white md:text-zinc-900 placeholder-zinc-500 md:placeholder-zinc-400 pl-9 pr-3 py-2 rounded-xl border border-zinc-800 md:border-zinc-200 focus:outline-none focus:border-[#1a73e8] focus:bg-zinc-800 md:focus:bg-white transition-all font-medium"
                 />
               </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setNewChatSearch("");
+                  setShowNewChatModal(true);
+                }}
+                className="w-9 h-9 rounded-xl bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center shadow-sm shrink-0 transition-colors cursor-pointer"
+                title="Start new message"
+              >
+                <Plus className="w-4 h-4 stroke-[2.5]" />
+              </button>
             </div>
 
             {/* List of active threads */}
             <div className="flex-1 overflow-y-auto divide-y divide-zinc-800/60 md:divide-zinc-100">
               {filteredThreads.length === 0 ? (
-                <div className="p-8 text-center text-zinc-400 space-y-2 mt-4">
+                <div className="p-8 text-center text-zinc-400 space-y-3 mt-4">
                   <Mail className="w-8 h-8 text-zinc-600 md:text-zinc-300 mx-auto" />
-                  <p className="text-xs font-semibold">No chats found</p>
+                  <div className="space-y-1">
+                    <p className="text-xs font-bold text-white md:text-zinc-800">No conversations yet</p>
+                    <p className="text-[11px] text-zinc-500">Connect and message other community reviewers.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNewChatSearch("");
+                      setShowNewChatModal(true);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#1a73e8] text-white text-xs font-bold shadow-xs hover:bg-[#1557b0] transition-colors cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Start a Message</span>
+                  </button>
                 </div>
               ) : (
                 filteredThreads.map((thread) => {
@@ -1117,6 +1250,94 @@ export const CopoMessagesView: React.FC<CopoMessagesViewProps> = ({
                 className="flex-1 py-2.5 rounded-xl bg-red-600 text-white font-black text-xs hover:bg-red-700 transition-colors shadow-xs"
               >
                 Block User
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Start New Chat / Message Modal */}
+      {showNewChatModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-zinc-900 md:bg-white rounded-3xl max-w-md w-full p-5 space-y-4 shadow-2xl border border-zinc-800 md:border-zinc-200 animate-in zoom-in-95 duration-150 flex flex-col max-h-[85vh]">
+            <div className="flex items-center justify-between border-b border-zinc-800 md:border-zinc-150 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-blue-500/15 text-[#1a73e8] flex items-center justify-center font-bold">
+                  <MessageSquare className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-white md:text-zinc-900">New Direct Message</h3>
+                  <p className="text-[10px] text-zinc-400">Message community members and creators</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowNewChatModal(false)}
+                className="w-7 h-7 rounded-full bg-zinc-800 md:bg-zinc-100 text-zinc-400 hover:text-white md:hover:text-zinc-900 flex items-center justify-center cursor-pointer transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Search member */}
+            <div className="relative">
+              <Search className="absolute left-3 top-2.5 w-4 h-4 text-zinc-400" />
+              <input
+                type="text"
+                placeholder="Search by name..."
+                value={newChatSearch}
+                onChange={(e) => setNewChatSearch(e.target.value)}
+                autoFocus
+                className="w-full bg-zinc-950 md:bg-zinc-50 text-xs text-white md:text-zinc-900 placeholder-zinc-500 md:placeholder-zinc-400 pl-9 pr-3 py-2 rounded-xl border border-zinc-800 md:border-zinc-200 focus:outline-none focus:border-[#1a73e8] font-medium"
+              />
+            </div>
+
+            {/* List of members */}
+            <div className="flex-1 overflow-y-auto divide-y divide-zinc-800/50 md:divide-zinc-100 min-h-[220px] max-h-[360px] pr-1">
+              {filteredRecipients.length === 0 ? (
+                <div className="p-8 text-center text-zinc-500 space-y-2">
+                  <User className="w-8 h-8 mx-auto text-zinc-600 md:text-zinc-300" />
+                  <p className="text-xs font-semibold">No members found</p>
+                </div>
+              ) : (
+                filteredRecipients.map((recipient) => (
+                  <div
+                    key={`recip-${recipient.id}`}
+                    onClick={() => handleStartNewUserChat(recipient)}
+                    className="p-3 flex items-center justify-between gap-3 hover:bg-zinc-800/60 md:hover:bg-zinc-50 rounded-2xl cursor-pointer transition-colors group"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <img
+                        src={recipient.avatar}
+                        alt={recipient.name}
+                        className="w-10 h-10 rounded-full object-cover border border-zinc-800 md:border-zinc-200 shrink-0"
+                      />
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-white md:text-zinc-900 truncate group-hover:text-blue-400 md:group-hover:text-[#1a73e8] transition-colors">
+                          {recipient.name}
+                        </p>
+                        
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      className="px-3 py-1 rounded-xl bg-zinc-800 md:bg-zinc-100 group-hover:bg-[#1a73e8] text-zinc-300 md:text-zinc-700 group-hover:text-white text-[11px] font-bold transition-colors cursor-pointer shrink-0"
+                    >
+                      Chat
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="pt-2 border-t border-zinc-800 md:border-zinc-150 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowNewChatModal(false)}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-zinc-400 hover:text-white md:hover:text-zinc-800 cursor-pointer"
+              >
+                Close
               </button>
             </div>
           </div>

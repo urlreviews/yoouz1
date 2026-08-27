@@ -28,6 +28,8 @@ import { CountrySelector } from "./CountrySelector";
 import { SearchableComboSelector } from "./SearchableComboSelector";
 import { countries } from "../utils/countries";
 import { locationData } from "../utils/locationData";
+import { triggerHaptic } from "../utils/haptics";
+import { useSwipeDownToDismiss } from "../hooks/useSwipeDownToDismiss";
 
 interface CopoCreatorDrawerProps {
   author: VideoAuthor | null;
@@ -38,7 +40,7 @@ interface CopoCreatorDrawerProps {
   onSelectVideo: (videoId: string) => void;
   onToggleFollow: (handle: string) => void;
   onStartChat?: (senderId: string, senderName: string, senderAvatar: string) => void;
-  onUpdateProfile?: (updated: { name?: string; bio?: string; avatar?: string; location?: string }) => void;
+  onUpdateProfile?: (updated: { name?: string; bio?: string; avatar?: string; banner?: string; location?: string }) => void;
   onOpenReport?: (author: VideoAuthor) => void;
   onRecordReview?: (place: any) => void;
   onDeleteVideo?: (videoId: string) => void;
@@ -69,12 +71,15 @@ export const CopoCreatorDrawer: React.FC<CopoCreatorDrawerProps> = ({
   const [editName, setEditName] = useState("");
   const [editBio, setEditBio] = useState("");
   const [editAvatar, setEditAvatar] = useState("");
+  const [editBanner, setEditBanner] = useState("");
+  const [bannerError, setBannerError] = useState("");
   const [editLocation, setEditLocation] = useState("");
   const [editCity, setEditCity] = useState("");
   const [editState, setEditState] = useState("");
   const [editCountry, setEditCountry] = useState("");
   const [avatarError, setAvatarError] = useState("");
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const bannerInputRef = useRef<HTMLInputElement | null>(null);
   const settingsMenuRef = useRef<HTMLDivElement | null>(null);
 
   const isOwner = Boolean(author && currentUser && isAuthorMatch({ author: author } as any, currentUser));
@@ -83,6 +88,7 @@ export const CopoCreatorDrawer: React.FC<CopoCreatorDrawerProps> = ({
     if (isOwner && currentUser) {
       setEditName(currentUser.name || "");
       setEditBio(currentUser.bio || "");
+      setEditBanner(currentUser.banner || "");
       setEditAvatar(currentUser.avatar || "");
       const loc = currentUser.location || "";
       setEditLocation(loc);
@@ -167,14 +173,69 @@ export const CopoCreatorDrawer: React.FC<CopoCreatorDrawerProps> = ({
       : (recordedFaceThumbnail || author.avatar));
 
   if (!effectiveAvatar || effectiveAvatar.includes("unsplash") || effectiveAvatar.includes("dicebear")) {
-    const isBizRiv = (author.name || "").toLowerCase().includes("biz") || (author.handle || "").toLowerCase().includes("louis");
+    const isBizRiv = (author.name || "").toLowerCase().includes("biz") || (author.name || "").toLowerCase().includes("louis");
     effectiveAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(author.name || "User")}&background=${isBizRiv ? "059669" : "1a73e8"}&color=fff&bold=true&size=128`;
   }
+
+
+  let effectiveBanner = isOwner && currentUser?.banner 
+    ? currentUser.banner 
+    : author?.banner;
 
   const handleShare = () => {
     setIsShareModalOpen(true);
   };
 
+  const handleBannerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setBannerError("Please select a valid image file.");
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      setBannerError("Image file must be under 8MB.");
+      return;
+    }
+    setBannerError("");
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        // Banners can be wider
+        const MAX_WIDTH = 1024;
+        const MAX_HEIGHT = 1024;
+        let width = img.width;
+        let height = img.height;
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          try {
+            const compressedBase64 = canvas.toDataURL("image/jpeg", 0.85);
+            setEditBanner(compressedBase64);
+          } catch (err) {
+            setBannerError("Failed to process image.");
+          }
+        }
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -243,29 +304,53 @@ export const CopoCreatorDrawer: React.FC<CopoCreatorDrawerProps> = ({
         name: cleanName,
         bio: editBio.trim(),
         avatar: editAvatar || currentUser?.avatar,
+        banner: editBanner || currentUser?.banner,
         location: combinedLocation
       });
     }
     setIsEditModalOpen(false);
   };
 
+  const { dragOffsetY, swipeProps } = useSwipeDownToDismiss({
+    onDismiss: onClose,
+    threshold: 60
+  });
+
   return (
     <>
       {/* Mobile Backdrop (Bottom Sheet) */}
-      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden animate-in fade-in duration-200" onClick={onClose} />
+      <div 
+        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden animate-in fade-in duration-200" 
+        onClick={() => {
+          triggerHaptic("light");
+          onClose();
+        }} 
+      />
 
       <aside
         id="google-maps-creator-panel"
-        className="fixed inset-x-0 bottom-0 md:bottom-auto md:inset-auto md:relative z-50 md:z-20 w-full md:w-[400px] lg:w-[430px] h-[100dvh] md:h-screen bg-zinc-950 md:bg-white text-white md:text-zinc-900 flex flex-col shadow-none md:shadow-lg border-r border-zinc-800 md:border-zinc-200 shrink-0 overflow-hidden animate-in slide-in-from-bottom md:slide-in-from-left duration-200 select-none overscroll-contain"
+        style={dragOffsetY > 0 ? { transform: `translateY(${dragOffsetY}px)`, transition: 'none' } : undefined}
+        className="fixed inset-x-0 bottom-0 md:bottom-auto md:inset-auto md:relative z-50 md:z-20 w-full md:w-[350px] lg:w-[430px] h-[100dvh] md:h-[100dvh] bg-zinc-950 md:bg-white text-white md:text-zinc-900 flex flex-col shadow-none md:shadow-lg border-r border-zinc-800 md:border-zinc-200 shrink-0 overflow-hidden animate-in slide-in-from-bottom md:slide-in-from-left duration-200 select-none overscroll-contain transition-transform"
         onWheel={(e) => e.stopPropagation()}
         onTouchMove={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}
       >
         {/* Mobile Pull Handle Indicator */}
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 w-12 h-1.5 bg-white/40 rounded-full z-30 md:hidden shadow-sm" />
+        <div 
+          {...swipeProps}
+          className="absolute top-0 left-0 right-0 h-8 flex items-center justify-center z-30 md:hidden cursor-grab active:cursor-grabbing touch-none"
+        >
+          <div className="w-12 h-1.5 bg-white/60 rounded-full shadow-md mix-blend-difference" />
+        </div>
 
         {/* Top Header Banner */}
-        <div className="relative h-44 w-full bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-800 shrink-0">
+        <div 
+          {...swipeProps}
+          className="relative h-44 w-full bg-zinc-950 md:bg-gradient-to-r md:from-blue-600 md:via-indigo-600 md:to-blue-800 shrink-0 touch-pan-y"
+        >
+          {effectiveBanner && (
+            <img src={effectiveBanner} className="absolute inset-0 w-full h-full object-cover" referrerPolicy="no-referrer" />
+          )}
           <div className="absolute inset-0 bg-black/20" />
 
           {/* Verified Top Contributor Badge */}
@@ -279,7 +364,10 @@ export const CopoCreatorDrawer: React.FC<CopoCreatorDrawerProps> = ({
             {/* Share button */}
             <button
               id="btn-share-creator-profile"
-              onClick={handleShare}
+              onClick={() => {
+                triggerHaptic("light");
+                handleShare();
+              }}
               className="w-9 h-9 rounded-full bg-zinc-900/90 md:bg-white/95 shadow-md flex items-center justify-center text-zinc-100 md:text-zinc-800 hover:bg-zinc-850 md:hover:bg-white hover:scale-105 active:scale-95 transition-all cursor-pointer border border-zinc-700/60 md:border-zinc-200"
               title="Share Profile"
             >
@@ -290,7 +378,10 @@ export const CopoCreatorDrawer: React.FC<CopoCreatorDrawerProps> = ({
             {!isOwner && onOpenReport && (
               <button
                 id="btn-report-creator-profile"
-                onClick={() => onOpenReport(author)}
+                onClick={() => {
+                  triggerHaptic("light");
+                  onOpenReport(author);
+                }}
                 className="w-9 h-9 rounded-full bg-zinc-900/90 md:bg-white/95 shadow-md flex items-center justify-center text-zinc-300 md:text-zinc-600 hover:text-red-400 md:hover:text-red-600 hover:bg-zinc-850 md:hover:bg-white hover:scale-105 active:scale-95 transition-all cursor-pointer border border-zinc-700/60 md:border-zinc-200"
                 title="Report creator"
               >
@@ -354,7 +445,10 @@ export const CopoCreatorDrawer: React.FC<CopoCreatorDrawerProps> = ({
             {/* Close button */}
             <button
               id="btn-close-creator-panel"
-              onClick={onClose}
+              onClick={() => {
+                triggerHaptic("light");
+                onClose();
+              }}
               className="w-9 h-9 rounded-full bg-zinc-900/90 md:bg-white/95 shadow-md flex items-center justify-center text-zinc-100 md:text-zinc-800 hover:bg-zinc-850 md:hover:bg-white hover:scale-105 active:scale-95 transition-all cursor-pointer border border-zinc-700/60 md:border-zinc-200"
               title="Close creator profile"
             >
@@ -384,11 +478,11 @@ export const CopoCreatorDrawer: React.FC<CopoCreatorDrawerProps> = ({
 
         {/* Creator Details Header */}
         <div className="px-6 pt-10 pb-4 bg-zinc-950 md:bg-white border-b border-zinc-800 md:border-zinc-200">
-          <div className="flex items-center justify-between">
-            <div className="min-w-0 pr-2">
-              <h2 className="text-xl font-black text-white md:text-zinc-900 tracking-tight leading-tight flex items-center gap-1.5 truncate">
-                <span className="truncate">{isOwner && currentUser ? currentUser.name : author.name}</span>
-                <CheckCircle className="w-4 h-4 fill-[#1a73e8] text-white shrink-0" />
+          <div className="flex items-start justify-between">
+            <div className="min-w-0 pr-2 pt-1">
+              <h2 className="text-xl font-black text-white md:text-zinc-900 tracking-tight leading-tight flex flex-wrap items-center gap-1.5">
+                <span className="break-words max-w-full" style={{ wordBreak: 'break-word' }}>{isOwner && currentUser ? currentUser.name : author.name}</span>
+                <CheckCircle className="w-4 h-4 fill-[#1a73e8] text-white shrink-0 mt-0.5" />
               </h2>
               {isOwner && currentUser?.location ? (
                 <p className="text-xs text-zinc-400 md:text-zinc-500 font-semibold flex items-center gap-1 mt-1.5">
@@ -416,7 +510,7 @@ export const CopoCreatorDrawer: React.FC<CopoCreatorDrawerProps> = ({
               ) : (
                 <>
                   <button
-                    onClick={() => onToggleFollow(author.handle)}
+                    onClick={() => onToggleFollow(author.name)}
                     className={`px-4 py-2 rounded-full font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer ${
                       author.isFollowed
                         ? "bg-zinc-900 md:bg-zinc-100 text-zinc-200 md:text-zinc-800 border border-zinc-800 md:border-zinc-300 hover:bg-zinc-850 md:hover:bg-zinc-200"
@@ -438,7 +532,7 @@ export const CopoCreatorDrawer: React.FC<CopoCreatorDrawerProps> = ({
 
                   {onStartChat && (
                     <button
-                      onClick={() => onStartChat(author.handle, author.name, effectiveAvatar)}
+                      onClick={() => onStartChat(author.name, author.name, effectiveAvatar)}
                       className="px-4 py-2 rounded-full font-bold text-xs bg-zinc-900 md:bg-white text-blue-400 md:text-[#1a73e8] border border-zinc-800 md:border-zinc-300 hover:bg-zinc-850 md:hover:bg-zinc-50 flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
                     >
                       <MessageSquare className="w-3.5 h-3.5" />
@@ -642,7 +736,7 @@ export const CopoCreatorDrawer: React.FC<CopoCreatorDrawerProps> = ({
       {/* Edit Profile Modal */}
       {isEditModalOpen && (
         <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4" onClick={(e) => e.stopPropagation()}>
-          <div className="bg-zinc-900 md:bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-zinc-800 md:border-zinc-200 space-y-5 animate-in fade-in zoom-in-95 duration-150" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-zinc-900 md:bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-zinc-800 md:border-zinc-200 space-y-5 animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto no-scrollbar" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between border-b border-zinc-800 md:border-zinc-100 pb-3">
               <div>
                 <h3 className="text-lg font-black text-white md:text-zinc-950">Edit Profile</h3>
@@ -670,6 +764,28 @@ export const CopoCreatorDrawer: React.FC<CopoCreatorDrawerProps> = ({
                 {avatarError && <p className="text-xs text-red-400 md:text-red-500 font-semibold">{avatarError}</p>}
               </div>
 
+              {/* Banner Photo Uploader */}
+              <div className="flex flex-col items-center gap-3">
+                <div className="relative group cursor-pointer w-full" onClick={() => bannerInputRef.current?.click()}>
+                  <div className="w-full h-32 rounded-2xl overflow-hidden border-2 border-indigo-600 shadow-md relative bg-zinc-950 md:bg-zinc-100">
+                    {editBanner || currentUser?.banner ? (
+                      <img src={editBanner || currentUser?.banner} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200" referrerPolicy="no-referrer" />
+                    ) : (
+                      <div className="w-full h-full bg-zinc-950 md:bg-gradient-to-r md:from-blue-600 md:via-indigo-600 md:to-blue-800" />
+                    )}
+                    <div className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                      <Camera className="w-6 h-6" />
+                    </div>
+                  </div>
+                  <button type="button" className="absolute bottom-2 right-2 p-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg transition-colors cursor-pointer"><Camera className="w-3.5 h-3.5" /></button>
+                  <input type="file" ref={bannerInputRef} className="hidden" accept="image/*" onChange={handleBannerChange} />
+                </div>
+                <div className="text-center">
+                  <span className="text-xs font-bold text-zinc-200 md:text-zinc-700">Cover Banner</span>
+                  <p className="text-[10px] text-zinc-400">Click to upload a custom JPG or PNG</p>
+                </div>
+                {bannerError && <p className="text-xs text-red-400 md:text-red-500 font-semibold">{bannerError}</p>}
+              </div>
               {/* Name Field (Read-only) */}
               <div className="space-y-1.5">
                 <label className="text-[11px] font-extrabold uppercase tracking-wider text-zinc-400 md:text-zinc-500">Name</label>
@@ -826,7 +942,7 @@ export const CopoCreatorDrawer: React.FC<CopoCreatorDrawerProps> = ({
       <CopoShareModal
         isOpen={isShareModalOpen}
         onClose={() => setIsShareModalOpen(false)}
-        shareUrl={`${window.location.origin}/@${author.handle}`}
+        shareUrl={`${window.location.origin}/creator/${(author.name || "user").replace(/\s+/g, "").toLowerCase()}`}
         title={author.name}
         subtitle="Reviewer Profile"
       />

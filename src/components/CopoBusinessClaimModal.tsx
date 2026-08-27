@@ -24,7 +24,7 @@ export interface BusinessSession {
   placeName: string;
   verifiedAt: string;
   role: 'business_owner';
-  verificationMethod: 'resend_email_magic_link' | 'website_meta_tag';
+  verificationMethod: 'business_email_code' | 'resend_email_magic_link' | 'website_meta_tag';
   token: string;
 }
 
@@ -257,62 +257,54 @@ export const CopoBusinessClaimModal: React.FC<CopoBusinessClaimModalProps> = ({
 
   return (
     <div 
-      className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in"
+      className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in copo-business-claim-modal"
       onClick={onClose}
     >
       <div 
-        className="bg-white rounded-3xl max-w-xl w-full shadow-2xl border border-zinc-200 overflow-hidden flex flex-col my-auto relative animate-in zoom-in-95"
+        className="bg-zinc-900 rounded-3xl max-w-xl w-full shadow-2xl border border-zinc-800 overflow-hidden flex flex-col my-auto relative animate-in zoom-in-95"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Top Header */}
-        <div className="px-6 pt-6 pb-4 border-b border-zinc-100 flex items-start justify-between">
+        <div className="px-6 py-5 border-b border-zinc-800 flex items-start justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-[#1a73e8] text-white flex items-center justify-center shadow-md shadow-blue-500/25 shrink-0 border border-white/20">
-              <Building2 className="w-6 h-6" />
+            <div className="w-11 h-11 rounded-2xl bg-zinc-900 text-white flex items-center justify-center shadow-sm shrink-0">
+              <Building2 className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-extrabold text-lg text-zinc-900 font-['Google_Sans',sans-serif]">
-                  Claim Business Listing
+                <h3 className="font-extrabold text-lg text-white font-['Google_Sans',sans-serif]">
+                  Verify Business Listing
                 </h3>
-                <span className="px-2 py-0.5 rounded-full bg-blue-50 border border-blue-100 text-[10px] font-bold text-[#1a73e8] uppercase tracking-wider">
-                  Resend Verified
+                <span className="px-2 py-0.5 rounded-full bg-blue-900/30 text-[10px] font-bold text-blue-400 uppercase tracking-wider">
+                  Merchant Access
                 </span>
               </div>
               <p className="text-xs text-zinc-500 mt-0.5">
-                Verify business ownership to reply to video reviews & embed widget
+                Verify ownership to reply to video reviews & manage widgets
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-zinc-100 hover:bg-zinc-200 text-zinc-500 flex items-center justify-center transition-colors cursor-pointer"
+            className="w-8 h-8 rounded-full bg-zinc-800 hover:bg-zinc-800 text-zinc-500 flex items-center justify-center transition-colors cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
-        </div>
-
-        {/* Security Warning Notice: No Consumer Google Sign In */}
-        <div className="px-6 py-2.5 bg-amber-50/80 border-b border-amber-100 flex items-center gap-2.5 text-xs text-amber-900">
-          <Lock className="w-4 h-4 text-amber-700 shrink-0" />
-          <p className="leading-snug text-[11.5px]">
-            <strong>Business Security Rule:</strong> Business owners must verify via official email magic link (Resend API) or HTML meta tag — consumer Google accounts cannot claim listings.
-          </p>
         </div>
 
         {/* Body Content */}
         <div className="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
           
           {/* Target Business Selection Card */}
-          <div className="p-3.5 bg-zinc-50 rounded-2xl border border-zinc-200/80 flex items-center justify-between">
+          <div className="p-3.5 bg-zinc-950 rounded-2xl border border-zinc-800/80 flex items-center justify-between">
             <div className="flex items-center gap-3 truncate">
-              <div className="w-9 h-9 rounded-xl bg-white border border-zinc-200 text-[#1a73e8] flex items-center justify-center font-bold text-sm shrink-0 shadow-2xs">
+              <div className="w-9 h-9 rounded-xl bg-zinc-900 border border-zinc-800 text-blue-400 flex items-center justify-center font-bold text-sm shrink-0 shadow-2xs">
                 {targetPlace.name?.charAt(0) || 'B'}
               </div>
               <div className="truncate">
-                <div className="font-bold text-sm text-zinc-900 flex items-center gap-1.5 truncate">
+                <div className="font-bold text-sm text-white flex items-center gap-1.5 truncate">
                   <span>{targetPlace.name}</span>
-                  <ShieldCheck className="w-4 h-4 text-[#1a73e8] shrink-0" />
+                  <ShieldCheck className="w-4 h-4 text-blue-400 shrink-0" />
                 </div>
                 <div className="text-[11px] text-zinc-500 truncate">
                   {targetPlace.address || 'Verified Business Venue'}
@@ -322,7 +314,7 @@ export const CopoBusinessClaimModal: React.FC<CopoBusinessClaimModalProps> = ({
 
             <button
               onClick={() => setShowPlaceSearch(!showPlaceSearch)}
-              className="px-3 py-1.5 bg-white hover:bg-zinc-100 text-zinc-700 text-xs font-bold rounded-xl border border-zinc-200 transition-colors shrink-0 cursor-pointer shadow-2xs"
+              className="px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 text-xs font-bold rounded-xl border border-zinc-800 transition-colors shrink-0 cursor-pointer shadow-2xs"
             >
               {showPlaceSearch ? 'Cancel' : 'Switch Venue'}
             </button>
@@ -330,13 +322,13 @@ export const CopoBusinessClaimModal: React.FC<CopoBusinessClaimModalProps> = ({
 
           {/* Place Search Dropdown if switched */}
           {showPlaceSearch && (
-            <div className="p-3 bg-white rounded-2xl border border-zinc-200 shadow-lg space-y-2 animate-in fade-in">
+            <div className="p-3 bg-zinc-900 rounded-2xl border border-zinc-800 shadow-lg space-y-2 animate-in fade-in">
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search venue name or address..."
-                className="w-full px-3 py-2 bg-zinc-50 border border-zinc-200 rounded-xl text-xs text-zinc-900 focus:outline-hidden focus:ring-2 focus:ring-[#1a73e8]"
+                className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-xs text-white focus:outline-hidden focus:ring-2 focus:ring-[#1a73e8]"
               />
               <div className="max-h-40 overflow-y-auto space-y-1">
                 {filteredPlaces.slice(0, 5).map((p) => (
@@ -347,10 +339,10 @@ export const CopoBusinessClaimModal: React.FC<CopoBusinessClaimModalProps> = ({
                       setWebsiteUrl(p.website || '');
                       setShowPlaceSearch(false);
                     }}
-                    className="w-full px-3 py-2 text-left hover:bg-blue-50 rounded-xl text-xs flex items-center justify-between transition-colors"
+                    className="w-full px-3 py-2 text-left hover:bg-blue-900/30 rounded-xl text-xs flex items-center justify-between transition-colors"
                   >
                     <div className="truncate">
-                      <span className="font-bold text-zinc-800 block truncate">{p.name}</span>
+                      <span className="font-bold text-zinc-200 block truncate">{p.name}</span>
                       <span className="text-[10px] text-zinc-400 block truncate">{p.address}</span>
                     </div>
                     <ArrowRight className="w-3.5 h-3.5 text-zinc-400" />
@@ -361,24 +353,24 @@ export const CopoBusinessClaimModal: React.FC<CopoBusinessClaimModalProps> = ({
           )}
 
           {/* Verification Method Tabs */}
-          <div className="flex bg-zinc-100 p-1 rounded-2xl">
+          <div className="flex bg-zinc-800 p-1 rounded-2xl">
             <button
               onClick={() => setActiveTab('email')}
               className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
                 activeTab === 'email' 
-                  ? 'bg-white text-zinc-900 shadow-sm border border-zinc-200/60' 
-                  : 'text-zinc-500 hover:text-zinc-800'
+                  ? 'bg-zinc-900 text-white shadow-sm border border-zinc-800/60' 
+                  : 'text-zinc-500 hover:text-zinc-200'
               }`}
             >
-              <Mail className="w-4 h-4 text-[#1a73e8]" />
-              <span>Official Business Email (Resend)</span>
+              <Mail className="w-4 h-4 text-blue-400" />
+              <span>Email Verification</span>
             </button>
             <button
               onClick={() => setActiveTab('meta_tag')}
               className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
                 activeTab === 'meta_tag' 
-                  ? 'bg-white text-zinc-900 shadow-sm border border-zinc-200/60' 
-                  : 'text-zinc-500 hover:text-zinc-800'
+                  ? 'bg-zinc-900 text-white shadow-sm border border-zinc-800/60' 
+                  : 'text-zinc-500 hover:text-zinc-200'
               }`}
             >
               <Code className="w-4 h-4 text-purple-600" />
@@ -386,14 +378,14 @@ export const CopoBusinessClaimModal: React.FC<CopoBusinessClaimModalProps> = ({
             </button>
           </div>
 
-          {/* TAB 1: BUSINESS EMAIL MAGIC LINK (RESEND API) */}
+          {/* TAB 1: BUSINESS EMAIL VERIFICATION */}
           {activeTab === 'email' && (
             <div className="space-y-4">
               {!emailSentSuccess ? (
                 <form onSubmit={handleSendMagicLink} className="space-y-3.5">
                   <div>
-                    <label className="block text-xs font-bold text-zinc-700 mb-1.5">
-                      Business Domain Email Address
+                    <label className="block text-xs font-bold text-zinc-300 mb-1.5">
+                      Business Email Address
                     </label>
                     <div className="relative">
                       <Mail className="w-4 h-4 text-zinc-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -402,12 +394,12 @@ export const CopoBusinessClaimModal: React.FC<CopoBusinessClaimModalProps> = ({
                         required
                         value={businessEmail}
                         onChange={(e) => setBusinessEmail(e.target.value)}
-                        placeholder="e.g. owner@therusticspoon-nyc.com"
-                        className="w-full pl-10 pr-4 py-3 bg-zinc-50 focus:bg-white border border-zinc-300 rounded-xl text-xs text-zinc-900 focus:outline-hidden focus:ring-2 focus:ring-[#1a73e8] font-medium"
+                        placeholder="e.g. contact@business.com"
+                        className="w-full pl-10 pr-4 py-3 bg-zinc-950 focus:bg-zinc-900 border border-zinc-700 rounded-xl text-xs text-white focus:outline-hidden focus:ring-2 focus:ring-[#1a73e8] font-medium"
                       />
                     </div>
                     <p className="text-[11px] text-zinc-500 mt-1">
-                      We'll dispatch a high-security 1-click magic link & 6-digit code via Resend.
+                      We'll send a 6-digit verification code to confirm ownership.
                     </p>
                   </div>
 
@@ -426,26 +418,26 @@ export const CopoBusinessClaimModal: React.FC<CopoBusinessClaimModalProps> = ({
                     {isSendingEmail ? (
                       <>
                         <Loader2 className="w-4 h-4 animate-spin" />
-                        <span>Sending via Resend API...</span>
+                        <span>Sending verification code...</span>
                       </>
                     ) : (
                       <>
                         <Sparkles className="w-4 h-4" />
-                        <span>Send Magic Verification Link</span>
+                        <span>Send Verification Code</span>
                       </>
                     )}
                   </button>
                 </form>
               ) : (
-                /* Step 2: Enter 6-digit code or Click Magic link */
+                /* Step 2: Enter 6-digit code */
                 <div className="space-y-4 animate-in fade-in">
-                  <div className="p-4 bg-blue-50/80 border border-blue-200/80 rounded-2xl space-y-2">
-                    <div className="flex items-center gap-2 text-xs font-bold text-[#1a73e8]">
+                  <div className="p-4 bg-blue-900/30/80 border border-blue-200/80 rounded-2xl space-y-2">
+                    <div className="flex items-center gap-2 text-xs font-bold text-blue-400">
                       <Check className="w-4 h-4" />
-                      <span>Magic Link Dispatched via Resend</span>
+                      <span>Verification Code Sent</span>
                     </div>
-                    <p className="text-[11.5px] text-zinc-600 leading-relaxed">
-                      We dispatched a verification email to <strong className="text-zinc-900">{businessEmail}</strong>. Click the link in the email or enter the 6-digit code below:
+                    <p className="text-[11.5px] text-zinc-400 leading-relaxed">
+                      We sent a verification code to <strong className="text-white">{businessEmail}</strong>. Enter the 6-digit code below:
                     </p>
                     {previewCode && (
                       <div className="pt-2 flex items-center justify-between border-t border-blue-200/60">
@@ -465,7 +457,7 @@ export const CopoBusinessClaimModal: React.FC<CopoBusinessClaimModalProps> = ({
 
                   <form onSubmit={handleVerifyCode} className="space-y-3">
                     <div>
-                      <label className="block text-xs font-bold text-zinc-700 mb-1.5">
+                      <label className="block text-xs font-bold text-zinc-300 mb-1.5">
                         6-Digit Verification Code
                       </label>
                       <input
@@ -475,7 +467,7 @@ export const CopoBusinessClaimModal: React.FC<CopoBusinessClaimModalProps> = ({
                         value={otpCode}
                         onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
                         placeholder="123456"
-                        className="w-full text-center tracking-[8px] font-mono text-xl py-3 bg-zinc-50 focus:bg-white border border-zinc-300 rounded-xl text-zinc-900 focus:outline-hidden focus:ring-2 focus:ring-[#1a73e8] font-bold"
+                        className="w-full text-center tracking-[8px] font-mono text-xl py-3 bg-zinc-950 focus:bg-zinc-900 border border-zinc-700 rounded-xl text-white focus:outline-hidden focus:ring-2 focus:ring-[#1a73e8] font-bold"
                       />
                     </div>
 
@@ -490,7 +482,7 @@ export const CopoBusinessClaimModal: React.FC<CopoBusinessClaimModalProps> = ({
                       <button
                         type="button"
                         onClick={() => setEmailSentSuccess(false)}
-                        className="px-4 py-3 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                        className="px-4 py-3 bg-zinc-800 hover:bg-zinc-800 text-zinc-300 rounded-xl text-xs font-bold transition-colors cursor-pointer"
                       >
                         Back
                       </button>
@@ -521,8 +513,8 @@ export const CopoBusinessClaimModal: React.FC<CopoBusinessClaimModalProps> = ({
           {/* TAB 2: HTML META TAG VERIFICATION */}
           {activeTab === 'meta_tag' && (
             <div className="space-y-4">
-              <div className="text-xs text-zinc-600 leading-relaxed">
-                Add this verification meta tag to the <code className="text-[#1a73e8] font-mono bg-blue-50 px-1 py-0.5 rounded">&lt;head&gt;</code> section of your website homepage:
+              <div className="text-xs text-zinc-400 leading-relaxed">
+                Add this verification meta tag to the <code className="text-blue-400 font-mono bg-blue-900/30 px-1 py-0.5 rounded">&lt;head&gt;</code> section of your website homepage:
               </div>
 
               {/* Tag Box with 1-click Copy */}
@@ -546,7 +538,7 @@ export const CopoBusinessClaimModal: React.FC<CopoBusinessClaimModalProps> = ({
 
               {/* Website URL input */}
               <div>
-                <label className="block text-xs font-bold text-zinc-700 mb-1.5">
+                <label className="block text-xs font-bold text-zinc-300 mb-1.5">
                   Official Website Homepage URL
                 </label>
                 <div className="relative">
@@ -556,7 +548,7 @@ export const CopoBusinessClaimModal: React.FC<CopoBusinessClaimModalProps> = ({
                     value={websiteUrl}
                     onChange={(e) => setWebsiteUrl(e.target.value)}
                     placeholder="https://therusticspoon-nyc.com"
-                    className="w-full pl-10 pr-4 py-2.5 bg-zinc-50 focus:bg-white border border-zinc-300 rounded-xl text-xs text-zinc-900 focus:outline-hidden focus:ring-2 focus:ring-purple-600 font-medium"
+                    className="w-full pl-10 pr-4 py-2.5 bg-zinc-950 focus:bg-zinc-900 border border-zinc-700 rounded-xl text-xs text-white focus:outline-hidden focus:ring-2 focus:ring-purple-600 font-medium"
                   />
                 </div>
               </div>
@@ -569,7 +561,7 @@ export const CopoBusinessClaimModal: React.FC<CopoBusinessClaimModalProps> = ({
               )}
 
               {tagSuccess && (
-                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2 text-xs text-emerald-700 font-bold">
+                <div className="p-3 bg-emerald-900/30 border border-emerald-200 rounded-xl flex items-center gap-2 text-xs text-emerald-700 font-bold">
                   <Check className="w-4 h-4 shrink-0" />
                   <span>Website HTML meta tag verified! Unlocking portal...</span>
                 </div>

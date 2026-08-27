@@ -45,7 +45,7 @@ export const CopoShareModal: React.FC<CopoShareModalProps> = ({
   if (!isOpen) return null;
 
   const shareUrl = isVideoMode && video
-    ? `${window.location.origin}/@${video.author?.handle || video.author?.name?.replace(/\s+/g, "").toLowerCase() || "user"}/video/${video.id}`
+    ? `${window.location.origin}/@${video.author?.name || video.author?.name?.replace(/\s+/g, "").toLowerCase() || "user"}/video/${video.id}`
     : (explicitShareUrl || window.location.origin);
 
   const title = isVideoMode && video

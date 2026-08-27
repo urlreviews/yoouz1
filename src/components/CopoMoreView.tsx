@@ -6,6 +6,7 @@ import {
   Info,
   LogOut,
   ChevronDown,
+  ChevronLeft,
   Globe,
   Video,
   Lock,
@@ -358,18 +359,27 @@ export const CopoMoreView: React.FC<CopoMoreViewProps> = ({
     >
       {/* Top Banner / Google-grade Header */}
       <header className="bg-zinc-900/90 md:bg-white/90 border-b border-zinc-800 md:border-zinc-200/80 sticky top-0 z-20 backdrop-blur-md">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-5">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="px-2.5 py-0.5 rounded-full bg-blue-500/10 md:bg-blue-50 border border-blue-500/20 md:border-blue-200/60 text-blue-400 md:text-[#1a73e8] text-[11px] font-black tracking-wide uppercase">
-                  Yoouz Hub
-                </span>
-                <span className="text-xs text-zinc-400 font-semibold">• Trust, Verification & Support</span>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => onNavigate("home")}
+                className="w-9 h-9 rounded-full bg-zinc-800 md:bg-zinc-100 hover:bg-zinc-700 md:hover:bg-zinc-200 text-zinc-300 md:text-zinc-700 flex items-center justify-center transition-colors cursor-pointer shrink-0 active:scale-95 shadow-sm"
+                title="Back to Feed"
+              >
+                <ChevronLeft className="w-5 h-5 stroke-[2.5]" />
+              </button>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-0.5 rounded-full bg-blue-500/10 md:bg-blue-50 border border-blue-500/20 md:border-blue-200/60 text-blue-400 md:text-[#1a73e8] text-[11px] font-black tracking-wide uppercase">
+                    Yoouz Hub
+                  </span>
+                  <span className="text-xs text-zinc-400 font-semibold">• Trust, Verification & Support</span>
+                </div>
+                <h1 className="text-xl sm:text-3xl font-black text-white md:text-zinc-950 tracking-tight mt-0.5">
+                  Knowledge & Trust Center
+                </h1>
               </div>
-              <h1 className="text-2xl sm:text-3xl font-black text-white md:text-zinc-950 tracking-tight mt-1">
-                Knowledge & Trust Center
-              </h1>
             </div>
 
             {/* Quick Navigation Action Chips */}

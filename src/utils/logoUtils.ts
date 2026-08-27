@@ -116,7 +116,7 @@ export function getCleanLogoUrl(url: string | null | undefined, domain?: string 
     return KNOWN_BRAND_LOGOS[cleanDomain];
   }
 
-  if (url && (url.startsWith("data:image/") || url.startsWith("/api/") || url.startsWith("https://"))) {
+  if (url && (url.startsWith("data:image/") || url.startsWith("/api/") || url.startsWith("https://") || url.startsWith("http://"))) {
     if (!url.includes("clearbit.com")) {
       return url;
     }

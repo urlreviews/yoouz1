@@ -26,6 +26,7 @@ import { resolvePlayableVideoSourcesCascade, resolveVideoPosterUrl } from "../ut
 import { CopoBrandLogo } from "./CopoBrandLogo";
 import { SEOTags } from "./SEOTags";
 import { getVideoBlobFromIndexedDB, saveVideoBlobToIndexedDB } from "../lib/videoStorage";
+import { triggerHaptic } from "../utils/haptics";
 
 interface VideoFeedCardProps {
   video: VideoReview;
@@ -48,7 +49,7 @@ interface VideoFeedCardProps {
   onOpenMoreMenu: (video: VideoReview) => void;
   onToggleLike: (videoId: string) => void;
   onToggleBookmark: (videoId: string) => void;
-  onToggleFollow: (handle: string) => void;
+  onToggleFollow: (name: string) => void;
   onOpenMenu?: () => void;
   onGoBack?: () => void;
   feedContextTitle?: string;
@@ -102,6 +103,9 @@ export const VideoFeedCard: React.FC<VideoFeedCardProps> = ({
 
   const muteFeedbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const feedbackTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastTapTimeRef = useRef<number>(0);
+  const singleTapTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [heartCoords, setHeartCoords] = useState<{ x: number; y: number } | null>(null);
 
   const [cachedLocalUrl, setCachedLocalUrl] = useState<string | null>(null);
 
@@ -172,20 +176,14 @@ return () => {
     if (!el) return;
 
     if (isActive) {
-      if (!hasUserStartedFeed) {
-        // Initial website visit: strictly ensure the video is stopped and paused at frame 0
+      if (isManuallyPaused) {
         try {
           el.pause();
-          el.currentTime = 0;
         } catch (e) {}
         setIsPlaying(false);
-        setIsManuallyPaused(false);
-        setIsBuffering(false);
         return;
       }
 
-      // User has initiated or scrolled the feed: play immediately with full audio acceleration
-      setIsManuallyPaused(false);
       setShowPlayPauseFeedback(null);
       el.muted = isMuted;
       if (!isMuted) el.volume = 1;
@@ -199,11 +197,8 @@ return () => {
           })
           .catch((err) => {
             if (err.name === "AbortError") return;
-            // If browser policy prevents unmuted autoplay, mute and retry seamlessly
+            // If browser policy prevents unmuted autoplay on initial load, mute element and retry seamlessly
             el.muted = true;
-            if (onForceMute) {
-              onForceMute();
-            }
             el.play()
               .then(() => {
                 setIsPlaying(true);
@@ -232,7 +227,7 @@ return () => {
         el.pause();
       } catch (e) {}
     };
-  }, [isActive, currentSource, isMuted, hasUserStartedFeed]);
+  }, [isActive, currentSource, isMuted, isManuallyPaused]);
 
   // Keep iOS / Android Lock Screen & Media Controls in sync with rich metadata & app logo artwork
   useEffect(() => {
@@ -240,7 +235,7 @@ return () => {
       try {
         const origin = window.location.origin;
         const place = formatBusinessName(video.placeName) || "Business Review";
-        const author = video.author?.name || video.author?.handle || "Verified Reviewer";
+        const author = video.author?.name || video.author?.name || "Verified Reviewer";
         const caption = video.caption || `${video.rating || 5}★ Video Review of ${place}`;
 
         const artworks: MediaImage[] = [
@@ -295,6 +290,8 @@ return () => {
       onStartFeed();
     }
 
+    triggerHaptic("light");
+
     if (el.paused) {
       setIsManuallyPaused(false);
       el.muted = isMuted;
@@ -321,6 +318,7 @@ return () => {
 
   const handleToggleMute = (e?: React.MouseEvent) => {
     e?.stopPropagation();
+    triggerHaptic("selection");
     
     // Direct user tap: activate feed session immediately
     if (onStartFeed && !hasUserStartedFeed) {
@@ -353,19 +351,59 @@ return () => {
     }, 650);
   };
 
-  // Double tap to like
-  const handleDoubleTapLike = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  // Double tap to like (supports touch taps & mouse clicks)
+  const triggerDoubleTapLike = (clientX?: number, clientY?: number) => {
+    triggerHaptic("success");
     if (!video.isLiked) {
       onToggleLike(video.id);
     }
+    if (clientX !== undefined && clientY !== undefined) {
+      setHeartCoords({ x: clientX, y: clientY });
+    } else {
+      setHeartCoords(null);
+    }
     setShowHeartAnimation(true);
-    setTimeout(() => setShowHeartAnimation(false), 900);
+    setTimeout(() => {
+      setShowHeartAnimation(false);
+      setHeartCoords(null);
+    }, 900);
+  };
+
+  const handleCardClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const now = Date.now();
+    const diff = now - lastTapTimeRef.current;
+    
+    if (diff < 320 && diff > 0) {
+      // Detected Double Tap! Cancel pending single tap play/pause
+      if (singleTapTimeoutRef.current) {
+        clearTimeout(singleTapTimeoutRef.current);
+        singleTapTimeoutRef.current = null;
+      }
+      lastTapTimeRef.current = 0;
+      triggerDoubleTapLike(e.clientX, e.clientY);
+    } else {
+      // First tap: debounce single tap so double tap isn't interrupted by play/pause
+      lastTapTimeRef.current = now;
+      if (singleTapTimeoutRef.current) clearTimeout(singleTapTimeoutRef.current);
+      singleTapTimeoutRef.current = setTimeout(() => {
+        togglePlayPause(e);
+        singleTapTimeoutRef.current = null;
+      }, 250);
+    }
+  };
+
+  const handleDoubleTapLike = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (singleTapTimeoutRef.current) {
+      clearTimeout(singleTapTimeoutRef.current);
+      singleTapTimeoutRef.current = null;
+    }
+    triggerDoubleTapLike(e.clientX, e.clientY);
   };
 
   const safeAuthor = video.author || {
     name: "Verified Reviewer",
-    handle: "reviewer",
+    
     avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(video.userId || "Reviewer")}&background=1a73e8&color=fff&bold=true&size=128`,
     isVerified: true,
     isFollowed: false
@@ -419,9 +457,9 @@ return () => {
       ref={cardRef}
       data-video-index={index}
       id={`copo-video-card-${video.id}`}
-      onClick={togglePlayPause}
+      onClick={handleCardClick}
       onDoubleClick={handleDoubleTapLike}
-      className="snap-start snap-always shrink-0 relative w-full h-full md:w-[400px] lg:w-[420px] md:h-[92vh] md:max-h-[880px] bg-black md:rounded-3xl overflow-hidden md:shadow-2xl md:border md:border-zinc-800 select-none flex flex-col justify-between cursor-pointer group"
+      className="snap-start snap-always shrink-0 relative w-full h-full md:w-full md:max-w-[400px] lg:w-[420px] lg:max-w-none md:h-[92vh] md:max-h-[880px] bg-black md:rounded-3xl overflow-hidden md:shadow-2xl md:border md:border-zinc-800 select-none flex flex-col justify-between cursor-pointer group"
     >
       {/* Video Container */}
       <div
@@ -453,7 +491,7 @@ return () => {
           }}
           onCanPlay={() => {
             setIsVideoLoaded(true);
-            if (isActive && hasUserStartedFeed && !isManuallyPaused && videoRef.current?.paused) {
+            if (isActive && !isManuallyPaused && videoRef.current?.paused) {
               videoRef.current.play().catch(() => {});
             }
           }}
@@ -476,7 +514,7 @@ return () => {
           src={posterUrl}
           alt={video.caption || formatBusinessName(video.placeName) || "Video review poster"}
           className={`w-full h-full object-cover pointer-events-none absolute inset-0 transition-opacity duration-300 z-10 ${
-            isActive && isPlaying && hasUserStartedFeed ? "opacity-0" : "opacity-100"
+            isActive && isPlaying ? "opacity-0" : "opacity-100"
           }`}
           referrerPolicy="no-referrer"
         />
@@ -599,27 +637,8 @@ return () => {
         </div>
       )}
 
-      {/* Initial Landing Tap to Play Center Overlay (Clean, minimalist, no text banner) */}
-      {isActive && !hasUserStartedFeed && (
-        <div
-          id={`copo-initial-play-overlay-${video.id}`}
-          onClick={togglePlayPause}
-          className="absolute inset-0 z-20 flex items-center justify-center p-6 bg-black/25 backdrop-blur-[1px] transition-all cursor-pointer pointer-events-auto"
-        >
-          <button
-            type="button"
-            id={`copo-play-hero-btn-${video.id}`}
-            onClick={togglePlayPause}
-            className="w-20 h-20 sm:w-22 sm:h-22 rounded-full bg-black/65 backdrop-blur-md border border-white/30 flex items-center justify-center text-white shadow-2xl animate-in zoom-in-90 duration-150 pointer-events-auto cursor-pointer active:scale-90 hover:scale-105 transition-transform"
-            aria-label="Play video review"
-          >
-            <Play className="w-9 h-9 fill-white translate-x-0.5" />
-          </button>
-        </div>
-      )}
-
-      {/* Paused Center Play Button - ONLY shown when user manually paused */}
-      {isActive && hasUserStartedFeed && isManuallyPaused && !showPlayPauseFeedback && (
+      {/* Paused Center Play Button - shown whenever video is paused */}
+      {isActive && isManuallyPaused && !showPlayPauseFeedback && (
         <button
           type="button"
           id={`copo-play-center-btn-${video.id}`}
@@ -631,10 +650,24 @@ return () => {
         </button>
       )}
 
-      {/* Double-tap Heart Animation */}
+      {/* Double-tap Heart Animation (Positioned at tap coords or centered with burst animation) */}
       {showHeartAnimation && (
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 animate-ping duration-700 pointer-events-none">
-          <Heart className="w-24 h-24 fill-[#ff2d55] text-[#ff2d55] drop-shadow-2xl" />
+        <div 
+          className="absolute z-40 pointer-events-none flex items-center justify-center animate-in zoom-in-50 fade-in duration-200"
+          style={heartCoords ? {
+            left: `${heartCoords.x}px`,
+            top: `${heartCoords.y}px`,
+            transform: 'translate(-50%, -50%)'
+          } : {
+            left: '50%',
+            top: '50%',
+            transform: 'translate(-50%, -50%)'
+          }}
+        >
+          <div className="relative flex items-center justify-center">
+            <Heart className="w-28 h-28 fill-[#ff2d55] text-[#ff2d55] drop-shadow-[0_0_25px_rgba(255,45,85,0.85)] animate-bounce" />
+            <div className="absolute inset-0 rounded-full bg-pink-500/20 blur-xl animate-ping" />
+          </div>
         </div>
       )}
 
@@ -733,7 +766,10 @@ return () => {
 
             {!safeAuthor.isFollowed && (
               <button
-                onClick={() => onToggleFollow(safeAuthor.handle)}
+                onClick={() => {
+                  triggerHaptic("medium");
+                  onToggleFollow(safeAuthor.name);
+                }}
                 className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-5 h-5 rounded-full bg-[#1a73e8] text-white flex items-center justify-center shadow-md hover:scale-110 transition-transform cursor-pointer"
                 title="Follow"
               >
@@ -746,7 +782,10 @@ return () => {
           <div className="flex flex-col items-center">
             <button
               id={`btn-like-${video.id}`}
-              onClick={() => onToggleLike(video.id)}
+              onClick={() => {
+                triggerHaptic(video.isLiked ? "selection" : "medium");
+                onToggleLike(video.id);
+              }}
               className="w-11 h-11 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center hover:bg-black/60 transition-transform active:scale-90"
               title="Like"
             >
@@ -767,7 +806,10 @@ return () => {
           <div className="flex flex-col items-center">
             <button
               id={`btn-comments-${video.id}`}
-              onClick={() => onOpenComments(video)}
+              onClick={() => {
+                triggerHaptic("light");
+                onOpenComments(video);
+              }}
               className="w-11 h-11 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center hover:bg-black/60 transition-transform active:scale-90"
               title="Comments"
             >
@@ -782,7 +824,10 @@ return () => {
           <div className="flex flex-col items-center">
             <button
               id={`btn-bookmark-${video.id}`}
-              onClick={() => onToggleBookmark(video.id)}
+              onClick={() => {
+                triggerHaptic("selection");
+                onToggleBookmark(video.id);
+              }}
               className="w-11 h-11 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center hover:bg-black/60 transition-transform active:scale-90"
               title="Bookmark Place & Video"
             >
@@ -803,7 +848,10 @@ return () => {
           <div className="flex flex-col items-center">
             <button
               id={`btn-share-${video.id}`}
-              onClick={() => onOpenShare(video)}
+              onClick={() => {
+                triggerHaptic("light");
+                onOpenShare(video);
+              }}
               className="w-11 h-11 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center hover:bg-black/60 transition-transform active:scale-90"
               title="Share Video Review"
             >
@@ -818,7 +866,10 @@ return () => {
           <div className="flex flex-col items-center">
             <button
               id={`btn-more-options-${video.id}`}
-              onClick={() => onOpenMoreMenu(video)}
+              onClick={() => {
+                triggerHaptic("light");
+                onOpenMoreMenu(video);
+              }}
               className="w-11 h-11 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center hover:bg-black/60 hover:scale-105 transition-all active:scale-90 text-white cursor-pointer"
               title="More options"
             >

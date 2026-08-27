@@ -89,13 +89,7 @@ export const CopoVideoPlayer: React.FC<CopoVideoPlayerProps> = ({
   const currentVideo = videos[currentIndex] || videos[0];
   const [isMuted, setIsMuted] = useGlobalMute();
   const [moreMenuVideo, setMoreMenuVideo] = useState<VideoReview | null>(null);
-  const [hasUserStartedFeed, setHasUserStartedFeed] = useState<boolean>(false);
-
-  // Reset user started feed state on context changes (e.g. switching between Home, Business page, Creator profile, or subtabs)
-  // so the first video is always paused at frame 0, muted, and displays the center Play button
-  useEffect(() => {
-    setHasUserStartedFeed(false);
-  }, [contextKey, feedContextTitle]);
+  const [hasUserStartedFeed, setHasUserStartedFeed] = useState<boolean>(true);
 
   // Edit Rating State
   const [editingReviewVideo, setEditingReviewVideo] = useState<VideoReview | null>(null);
@@ -385,7 +379,7 @@ export const CopoVideoPlayer: React.FC<CopoVideoPlayerProps> = ({
           id="copo-loading-feed-container"
           className="flex-1 h-full flex items-center justify-center relative overflow-hidden bg-black md:bg-zinc-100 p-0 md:p-3"
         >
-          <div className="w-full h-full md:w-[400px] lg:w-[420px] md:h-[92vh] md:max-h-[880px] bg-zinc-900 md:rounded-3xl overflow-hidden md:shadow-2xl md:border md:border-zinc-800 flex flex-col justify-between p-6 animate-pulse relative">
+          <div className="w-full h-full md:w-full md:max-w-[400px] lg:w-[420px] lg:max-w-none md:h-[92vh] md:max-h-[880px] bg-zinc-900 md:rounded-3xl overflow-hidden md:shadow-2xl md:border md:border-zinc-800 flex flex-col justify-between p-6 animate-pulse relative">
             <div className="flex justify-between items-start z-10 w-full pt-12 md:pt-4">
               <div className="h-7 w-36 bg-white/20 rounded-full" />
               <div className="h-10 w-10 bg-white/20 rounded-full" />
@@ -410,7 +404,7 @@ export const CopoVideoPlayer: React.FC<CopoVideoPlayerProps> = ({
         id="copo-empty-feed-container"
         className="flex-1 h-full flex items-center justify-center relative p-3 overflow-hidden bg-zinc-100"
       >
-        <div className="relative w-[340px] sm:w-[380px] md:w-[400px] h-[85vh] max-h-[850px] bg-white rounded-3xl p-8 flex flex-col items-center justify-center text-center shadow-xl border border-zinc-200">
+        <div className="relative w-full max-w-[340px] sm:max-w-[380px] md:max-w-[400px] h-[85vh] max-h-[850px] bg-white rounded-3xl p-8 flex flex-col items-center justify-center text-center shadow-xl border border-zinc-200">
           <div className="w-20 h-20 rounded-[28px] bg-[#1a73e8] shadow-[0_8px_24px_rgba(26,115,232,0.4)] flex items-center justify-center text-white mb-6">
             <Video className="w-10 h-10 text-white" />
           </div>
@@ -443,7 +437,7 @@ export const CopoVideoPlayer: React.FC<CopoVideoPlayerProps> = ({
       id="copo-main-feed-container"
       className="flex-1 h-full flex items-center justify-center relative overflow-hidden bg-black md:bg-zinc-100 select-none"
     >
-      <div className="w-full h-full md:h-auto md:w-auto flex items-center gap-4 relative md:max-h-[98vh] md:p-3">
+      <div className="w-full h-full md:h-auto md:w-full md:max-w-[400px] lg:w-auto lg:max-w-none flex items-center md:justify-center gap-4 relative md:max-h-[98vh] md:p-3">
         {/* Scroll Snap Feed Container */}
         <div
           ref={containerRef}
@@ -567,7 +561,7 @@ export const CopoVideoPlayer: React.FC<CopoVideoPlayerProps> = ({
                   currentUser &&
                   (isAuthorMatch(moreMenuVideo, currentUser) ||
                     (currentUser.email && (moreMenuVideo?.userId === currentUser.email || (moreMenuVideo as any)?.userEmail === currentUser.email)) ||
-                    moreMenuVideo.author?.handle === "me" ||
+                    moreMenuVideo.author?.name === "me" ||
                     moreMenuVideo.userId === "me")
               ) ? (
                 /* OWNER ACTIONS: Edit Star Rating & Review, Share, View Place, Delete */

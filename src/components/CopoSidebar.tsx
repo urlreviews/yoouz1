@@ -62,7 +62,7 @@ export const CopoSidebar: React.FC<CopoSidebarProps> = ({
       {/* 1. Desktop Left Sidebar (Expanded - lg and above) */}
       <aside
         id="copo-desktop-sidebar"
-        className="hidden lg:flex flex-col w-64 h-screen shrink-0 bg-white border-r border-zinc-200 px-4 py-6 justify-between select-none z-30 shadow-[4px_0_24px_rgba(0,0,0,0.02)]"
+        className="hidden lg:flex flex-col w-64 h-[100dvh] shrink-0 bg-white border-r border-zinc-200 px-4 py-6 justify-between select-none z-30 shadow-[4px_0_24px_rgba(0,0,0,0.02)]"
       >
         <div className="flex flex-col gap-6">
           {/* Official Yoouz Logo */}
@@ -234,7 +234,7 @@ export const CopoSidebar: React.FC<CopoSidebarProps> = ({
       {/* 2. Tablet Left Rail (Collapsed - md to lg) */}
       <aside
         id="copo-tablet-rail"
-        className="hidden md:flex lg:hidden flex-col w-[76px] h-screen shrink-0 bg-white border-r border-zinc-200 py-6 items-center justify-between select-none z-30 shadow-[4px_0_24px_rgba(0,0,0,0.02)]"
+        className="hidden md:flex lg:hidden flex-col w-[76px] h-[100dvh] shrink-0 bg-white border-r border-zinc-200 py-6 items-center justify-between select-none z-30 shadow-[4px_0_24px_rgba(0,0,0,0.02)]"
       >
         <div className="flex flex-col gap-6 items-center w-full">
           {/* Logo Icon Only */}

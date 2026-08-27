@@ -8,7 +8,8 @@ import {
   List,
   Trash2,
   Compass,
-  MapPin
+  MapPin,
+  ChevronLeft
 } from "lucide-react";
 import { VideoReview, UserProfile } from "../types";
 import { CopoVideoThumbnail } from "./CopoVideoThumbnail";
@@ -44,7 +45,7 @@ export const CopoBookmarksView: React.FC<CopoBookmarksViewProps> = ({
   // Unauthenticated Gating View
   if (!currentUser) {
     return (
-      <div className="flex-1 h-full overflow-y-auto bg-zinc-950 md:bg-white text-white md:text-zinc-900 flex flex-col justify-between" style={{ paddingBottom: 'calc(5.5rem + env(safe-area-inset-bottom, 0px))' }}>
+      <div className="flex-1 h-full overflow-y-auto bg-zinc-950 md:bg-white text-white md:text-zinc-900 flex flex-col justify-between pb-32 md:pb-6" >
         <CopoAuthPrompt
           intent="bookmarks"
           onOpenHelp={onOpenHelp}
@@ -86,6 +87,15 @@ export const CopoBookmarksView: React.FC<CopoBookmarksViewProps> = ({
         {/* Header Section */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-zinc-800 md:border-zinc-200">
           <div className="flex items-center gap-3">
+            {onNavigateHome && (
+              <button
+                onClick={onNavigateHome}
+                className="w-9 h-9 rounded-full bg-zinc-900 md:bg-zinc-100 hover:bg-zinc-800 md:hover:bg-zinc-200 text-zinc-300 md:text-zinc-700 flex items-center justify-center transition-colors cursor-pointer shrink-0 active:scale-95 shadow-sm border border-zinc-800 md:border-zinc-200"
+                title="Back to Feed"
+              >
+                <ChevronLeft className="w-5 h-5 stroke-[2.5]" />
+              </button>
+            )}
             <div className="w-10 h-10 rounded-full bg-zinc-900 md:bg-[#e8f0fe] text-blue-400 md:text-[#1a73e8] flex items-center justify-center shadow-xs border border-zinc-800 md:border-blue-100">
               <Bookmark className="w-5 h-5 fill-current" />
             </div>

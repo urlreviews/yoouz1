@@ -38,7 +38,7 @@ export type FeedSubTab = "discover" | "following" | "clubs";
 export interface ReviewComment {
   id: string;
   authorName: string;
-  authorHandle: string;
+  authorHandle?: string;
   authorAvatar: string;
   text: string;
   createdAt: string;
@@ -49,7 +49,7 @@ export interface ReviewComment {
   isOwner?: boolean;
   likedByCreator?: boolean;
   replyToId?: string;
-  replyToHandle?: string;
+  
   replies?: ReviewComment[];
 }
 
@@ -57,9 +57,10 @@ export interface UserProfile {
   name: string;
   email: string;
   avatar: string;
-  handle?: string;
+  
   userId?: string;
   bio?: string;
+  banner?: string;
   location?: string;
   memberSince?: string;
   followersCount?: number;
@@ -84,12 +85,13 @@ export interface VideoReview {
   placeBannerUrl?: string;
   author: {
     name: string;
-    handle: string;
+    
     email?: string;
     userId?: string;
     id?: string;
     avatar: string;
     bio?: string;
+    banner?: string;
     location?: string;
     isLocalGuide?: boolean;
     localGuideLevel?: number;
@@ -118,6 +120,8 @@ export interface VideoReview {
   isBookmarked: boolean;
   repostsCount: number;
   isReposted?: boolean;
+  views?: number;
+  viewsCount?: number;
   sharesCount: number;
   recordedAt: string; // e.g. "a week ago", "3 days ago"
   feedCategory?: "discover" | "following" | "clubs";
@@ -234,7 +238,7 @@ export interface CopoNotification {
   type: "like" | "comment" | "follow" | "repost" | "message";
   user: {
     name: string;
-    handle: string;
+    
     avatar: string;
   };
   text: string;

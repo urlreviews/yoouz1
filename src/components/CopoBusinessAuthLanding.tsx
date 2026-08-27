@@ -1,25 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Building2, 
   Mail, 
-  Code, 
-  ShieldCheck, 
-  ArrowRight, 
   Check, 
-  Copy, 
   Loader2, 
   Sparkles, 
   AlertCircle, 
-  Globe, 
-  RefreshCw, 
-  Lock, 
   ArrowLeft, 
-  QrCode, 
-  Video, 
-  TrendingUp, 
-  CheckCircle2,
   ChevronRight,
-  ExternalLink
+  ArrowRight,
+  ShieldCheck,
+  Code,
+  QrCode
 } from 'lucide-react';
 import { Place, NavSection } from '../types';
 import { BusinessSession } from './CopoBusinessClaimModal';
@@ -37,128 +29,191 @@ export const CopoBusinessAuthLanding: React.FC<CopoBusinessAuthLandingProps> = (
   places,
   onSuccessAuth,
   initialPlace = null,
-  initialMode = 'signin'
 }) => {
-  const [mode, setMode] = useState<'signin' | 'claim' | 'demo'>(initialMode || 'signin');
+  // State
+  const [email, setEmail] = useState('');
+  const [step, setStep] = useState<'email' | 'code' | 'select_place'>('email');
+  const [selectedPlace, setSelectedPlace] = useState<Place | null>(initialPlace || null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   
-  // Selected place for claim
-  const [selectedPlace, setSelectedPlace] = useState<Place>(() => {
-    if (initialPlace) return initialPlace;
-    if (places && places.length > 0) return places[0];
-    return {
-      id: 'place-rustic-spoon',
-      name: 'The Rustic Spoon',
-      address: '123 Main St, New York, NY 10001',
-      category: 'Italian & Artisanal Bakery',
-      categoryType: 'restaurants',
-      city: 'New York',
-      rating: 4.9,
-      totalReviews: 42,
-      reviewCount: 42,
-      lat: 40.7128,
-      lng: -74.0060,
-      website: 'https://therusticspoon-nyc.com',
-      avatarUrl: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=200&q=80',
-      bannerUrl: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1200&q=80',
-      photos: [],
-      ratingDistribution: { stars5: 35, stars4: 5, stars3: 2, stars2: 0, stars1: 0 }
-    } as unknown as Place;
-  });
-
-  // Sync if initialPlace or initialMode changes
-  React.useEffect(() => {
-    if (initialPlace) {
-      setSelectedPlace(initialPlace);
-      if (initialPlace.website) setWebsiteUrl(initialPlace.website);
-    }
-  }, [initialPlace]);
-
-  React.useEffect(() => {
-    if (initialMode) {
-      setMode(initialMode);
-    }
-  }, [initialMode]);
-
-  const [claimSearch, setClaimSearch] = useState('');
-  const [claimTab, setClaimTab] = useState<'email' | 'meta_tag'>('email');
-
-  // Email Magic Link State
-  const [businessEmail, setBusinessEmail] = useState('');
-  const [isSendingEmail, setIsSendingEmail] = useState(false);
-  const [emailSentSuccess, setEmailSentSuccess] = useState(false);
-  const [otpCode, setOtpCode] = useState('');
+  // 6-Digit Code State
+  const [otpDigits, setOtpDigits] = useState<string[]>(['', '', '', '', '', '']);
   const [previewCode, setPreviewCode] = useState<string | null>(null);
-  const [isVerifyingCode, setIsVerifyingCode] = useState(false);
-  const [emailError, setEmailError] = useState<string | null>(null);
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  // Meta Tag State
-  const [websiteUrl, setWebsiteUrl] = useState(selectedPlace.website || '');
-  const [isCheckingTag, setIsCheckingTag] = useState(false);
-  const [copiedTag, setCopiedTag] = useState(false);
-  const [tagError, setTagError] = useState<string | null>(null);
-  const [tagSuccess, setTagSuccess] = useState(false);
+  // Auto-detect matching place by email domain
+  const findMatchingPlaceForEmail = (emailStr: string): Place | null => {
+    const domain = emailStr.split('@')[1]?.toLowerCase().trim();
+    if (!domain) return null;
 
-  const expectedTagString = `<meta name="yoouz-verification" content="verify_${selectedPlace.id || 'business'}" />`;
+    // Check if domain matches any place website or name
+    const cleanDomain = domain.replace(/^www\./, '');
+    const found = places.find(p => {
+      if (p.website) {
+        const pDom = p.website.replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0].toLowerCase();
+        if (pDom.includes(cleanDomain) || cleanDomain.includes(pDom)) return true;
+      }
+      const pNameSlug = p.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const domSlug = cleanDomain.split('.')[0];
+      if (pNameSlug && domSlug && (pNameSlug.includes(domSlug) || domSlug.includes(pNameSlug))) return true;
+      return false;
+    });
 
-  // Send Magic Link via Resend
-  const handleSendMagicLink = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!businessEmail || !businessEmail.includes('@')) {
-      setEmailError('Please enter a valid official business email.');
+    return found || null;
+  };
+
+  // Auto-verify Magic Link if token exists in URL
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const magicToken = urlParams.get('magic_token');
+    const paramEmail = urlParams.get('email');
+    const paramPlace = urlParams.get('place');
+
+    if (magicToken && paramEmail) {
+      setIsLoading(true);
+      fetch('/api/business/verify-magic-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: paramEmail,
+          token: magicToken,
+          placeId: paramPlace || (selectedPlace ? selectedPlace.id : 'place-custom')
+        })
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success && data.session) {
+            localStorage.setItem('copo_business_verified_session', JSON.stringify(data.session));
+            window.dispatchEvent(new CustomEvent('copo_business_auth_changed', { detail: data.session }));
+            onSuccessAuth(data.session);
+          } else {
+            setErrorMessage(data.error || 'The verification link has expired or is invalid.');
+          }
+        })
+        .catch(() => {
+          setErrorMessage('Unable to verify login link. Please try again.');
+        })
+        .finally(() => {
+          setIsLoading(false);
+        });
+    }
+  }, []);
+
+  // Handle Digit Changes
+  const handleDigitChange = (index: number, value: string) => {
+    const cleanVal = value.replace(/\D/g, '');
+    if (cleanVal.length > 1) {
+      const digits = cleanVal.slice(0, 6).split('');
+      const newOtp = [...otpDigits];
+      digits.forEach((d, idx) => {
+        if (index + idx < 6) newOtp[index + idx] = d;
+      });
+      setOtpDigits(newOtp);
+      const nextIdx = Math.min(index + digits.length, 5);
+      inputRefs.current[nextIdx]?.focus();
+
+      if (newOtp.every(d => d.length === 1)) {
+        verifyCode(newOtp.join(''));
+      }
       return;
     }
 
-    setIsSendingEmail(true);
-    setEmailError(null);
+    const newOtp = [...otpDigits];
+    newOtp[index] = cleanVal;
+    setOtpDigits(newOtp);
+
+    if (cleanVal && index < 5) {
+      inputRefs.current[index + 1]?.focus();
+    }
+
+    if (newOtp.every(d => d.length === 1)) {
+      verifyCode(newOtp.join(''));
+    }
+  };
+
+  const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace' && !otpDigits[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  // Submit Email (Step 1)
+  const handleEmailSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail || !cleanEmail.includes('@') || !cleanEmail.includes('.')) {
+      setErrorMessage('Please enter a valid work email.');
+      return;
+    }
+
+    setErrorMessage(null);
+    setIsLoading(true);
+
+    // Auto-detect business
+    let matched = selectedPlace || findMatchingPlaceForEmail(cleanEmail);
+    
+    // If not matched and no initial place, use default first place or prompt
+    if (!matched && places.length > 0) {
+      matched = places[0];
+    }
+    setSelectedPlace(matched);
 
     try {
       const response = await fetch('/api/business/send-magic-link', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email: businessEmail.trim(),
-          placeId: selectedPlace.id,
-          placeName: selectedPlace.name,
-          website: selectedPlace.website || websiteUrl,
+          email: cleanEmail,
+          placeId: matched ? matched.id : 'place-custom',
+          placeName: matched ? matched.name : 'Your Business',
+          website: matched?.website || '',
           host: window.location.host
         })
       });
 
       const data = await response.json();
       if (response.ok && data.success) {
-        setEmailSentSuccess(true);
+        setStep('code');
+        setOtpDigits(['', '', '', '', '', '']);
         if (data.previewCode) {
           setPreviewCode(data.previewCode);
         }
+        setTimeout(() => {
+          inputRefs.current[0]?.focus();
+        }, 100);
       } else {
-        setEmailError(data.error || 'Failed to send verification email.');
+        setErrorMessage(data.error || 'Failed to send verification code. Please try again.');
       }
     } catch (err) {
-      setEmailError('Network error. Please try again.');
+      setErrorMessage('Network error. Please try again.');
     } finally {
-      setIsSendingEmail(false);
+      setIsLoading(false);
     }
   };
 
-  // Verify OTP Code
-  const handleVerifyCode = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (!otpCode || otpCode.trim().length < 6) {
-      setEmailError('Please enter the complete 6-digit verification code.');
+  // Verify Code (Step 2)
+  const verifyCode = async (codeToVerify: string) => {
+    if (!codeToVerify || codeToVerify.length !== 6) {
+      setErrorMessage('Please enter the complete 6-digit code.');
       return;
     }
 
-    setIsVerifyingCode(true);
-    setEmailError(null);
+    setIsLoading(true);
+    setErrorMessage(null);
+
+    const cleanEmail = email.trim().toLowerCase();
+    const placeId = selectedPlace ? selectedPlace.id : 'place-custom';
 
     try {
       const response = await fetch('/api/business/verify-magic-link', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email: businessEmail.trim(),
-          code: otpCode.trim(),
-          placeId: selectedPlace.id
+          email: cleanEmail,
+          code: codeToVerify,
+          placeId
         })
       });
 
@@ -168,79 +223,38 @@ export const CopoBusinessAuthLanding: React.FC<CopoBusinessAuthLandingProps> = (
         window.dispatchEvent(new CustomEvent('copo_business_auth_changed', { detail: data.session }));
         onSuccessAuth(data.session);
       } else {
-        setEmailError(data.error || 'Invalid or expired code.');
+        setErrorMessage(data.error || 'Invalid or expired code. Please try again.');
       }
     } catch (err) {
-      setEmailError('Verification error. Please try again.');
+      setErrorMessage('Failed to verify code. Please try again.');
     } finally {
-      setIsVerifyingCode(false);
+      setIsLoading(false);
     }
   };
 
-  // Verify Website Meta Tag
-  const handleVerifyMetaTag = async () => {
-    const url = websiteUrl || selectedPlace.website;
-    if (!url) {
-      setTagError('Please provide a valid website URL.');
-      return;
+  // Quick Demo Access
+  const handleLaunchDemo = (placeChoice: 'london' | 'rustic' | 'ups') => {
+    let place = places.find(p => p.id === 'place-rustic-spoon') || places[0];
+    let defaultEmail = 'owner@therusticspoon.com';
+    let defaultName = 'The Rustic Spoon';
+
+    if (placeChoice === 'london') {
+      place = places.find(p => p.name.toLowerCase().includes('london') || p.name.toLowerCase().includes('trusted')) || places[0];
+      defaultEmail = 'contact@londontrustedtherapy.com';
+      defaultName = 'Londontrustedtherapy';
+    } else if (placeChoice === 'ups') {
+      place = places.find(p => p.name.toLowerCase().includes('ups') || p.website?.includes('ups.com')) || places[0];
+      defaultEmail = 'merchant@ups.com';
+      defaultName = 'ups.com';
     }
-
-    setIsCheckingTag(true);
-    setTagError(null);
-    setTagSuccess(false);
-
-    try {
-      const response = await fetch('/api/business/verify-website-tag', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          placeId: selectedPlace.id,
-          website: url,
-          expectedTag: `verify_${selectedPlace.id || 'business'}`
-        })
-      });
-
-      const data = await response.json();
-      if (response.ok && data.verified) {
-        setTagSuccess(true);
-        const session: BusinessSession = {
-          businessEmail: `verified_webmaster@${url.replace(/^https?:\/\//, '').split('/')[0]}`,
-          placeId: selectedPlace.id,
-          placeName: selectedPlace.name,
-          verifiedAt: new Date().toISOString(),
-          role: 'business_owner',
-          verificationMethod: 'website_meta_tag',
-          token: `biz_tag_${Date.now()}`
-        };
-
-        localStorage.setItem('copo_business_verified_session', JSON.stringify(session));
-        window.dispatchEvent(new CustomEvent('copo_business_auth_changed', { detail: session }));
-        setTimeout(() => {
-          onSuccessAuth(session);
-        }, 1000);
-      } else {
-        setTagError(data.message || 'Meta tag was not found in your homepage <head>.');
-      }
-    } catch (err) {
-      setTagError('Unable to reach website server.');
-    } finally {
-      setIsCheckingTag(false);
-    }
-  };
-
-  // Instant Demo Sign In
-  const handleLaunchDemo = (placeChoice: 'rustic' | 'ups') => {
-    const place = placeChoice === 'rustic' 
-      ? (places.find(p => p.id === 'place-rustic-spoon') || places[0])
-      : (places.find(p => p.name.toLowerCase().includes('ups') || p.website?.includes('ups.com')) || places[0]);
 
     const session: BusinessSession = {
-      businessEmail: placeChoice === 'rustic' ? 'owner@therusticspoon.com' : 'merchant@ups.com',
+      businessEmail: defaultEmail,
       placeId: place ? place.id : 'place-rustic-spoon',
-      placeName: place ? place.name : (placeChoice === 'rustic' ? 'The Rustic Spoon' : 'ups.com'),
+      placeName: place ? place.name : defaultName,
       verifiedAt: new Date().toISOString(),
       role: 'business_owner',
-      verificationMethod: 'resend_email_magic_link',
+      verificationMethod: 'business_email_code',
       token: `biz_demo_${Date.now()}`
     };
 
@@ -250,520 +264,279 @@ export const CopoBusinessAuthLanding: React.FC<CopoBusinessAuthLandingProps> = (
   };
 
   const filteredPlaces = places.filter(p => 
-    p.name.toLowerCase().includes(claimSearch.toLowerCase()) || 
-    p.address.toLowerCase().includes(claimSearch.toLowerCase())
+    p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    p.address.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
-    <div className="w-full min-h-screen bg-[#f8fafd] flex flex-col antialiased text-zinc-900">
+    <div className="w-full h-full min-h-0 flex-1 overflow-y-auto bg-zinc-950 flex flex-col antialiased text-white selection:bg-blue-900/30 selection:text-blue-400 copo-business-auth-landing">
       
-      {/* 1. Sleek Enterprise Top Bar */}
-      <header className="w-full h-16 bg-white border-b border-zinc-200 px-6 flex items-center justify-between shadow-2xs shrink-0 z-30">
-        <div className="flex items-center gap-3">
-          <div 
-            onClick={() => onNavigate('home')}
-            className="flex items-center gap-2.5 cursor-pointer group"
-          >
-            <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-[#1a73e8] shadow-sm shadow-blue-500/20 group-hover:scale-105 transition-transform text-white">
-              <svg viewBox="0 0 24 24" className="w-4 h-4 fill-white">
-                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-              </svg>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="font-extrabold text-lg text-zinc-900 font-['Google_Sans',sans-serif]">Yoouz</span>
-              <span className="px-2 py-0.5 rounded-md bg-zinc-100 text-zinc-700 text-[11px] font-bold uppercase tracking-wider border border-zinc-200/80">
-                Business Portal
-              </span>
-            </div>
+      {/* 1. Refined Minimal Header */}
+      <header className="w-full h-16 bg-zinc-900 border-b border-zinc-800/80 px-6 flex items-center justify-between shadow-2xs shrink-0 z-30">
+        <div 
+          onClick={() => onNavigate('home')}
+          className="flex items-center gap-2.5 cursor-pointer group"
+        >
+          <div className="flex items-center justify-center w-8 h-8 rounded-xl bg-[#1a73e8] shadow-sm shadow-blue-500/20 group-hover:scale-105 transition-transform text-white">
+            <svg viewBox="0 0 24 24" className="w-4 h-4 fill-white">
+              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+            </svg>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="font-extrabold text-lg text-white font-['Google_Sans',sans-serif] tracking-tight">Yoouz</span>
+            <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-400 text-[10.5px] font-bold uppercase tracking-wider border border-blue-900/50">
+              Business
+            </span>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => handleLaunchDemo('rustic')}
-            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-[#1a73e8] border border-blue-200 text-xs font-bold transition-colors cursor-pointer"
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>1-Click Interactive Demo</span>
-          </button>
+        <div className="flex items-center gap-2.5">
+          
 
           <button
             onClick={() => onNavigate('home')}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-100 hover:bg-zinc-200 text-zinc-700 text-xs font-semibold transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 text-xs font-medium transition-colors cursor-pointer"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Exit to Feed</span>
+            <span>Exit</span>
           </button>
         </div>
       </header>
 
-      {/* 2. Main Hero & Interactive Sign-In/Claim Workspace */}
-      <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-12 flex flex-col items-center">
+      {/* 2. Main Authentication Card */}
+      <main className="flex-1 max-w-md w-full mx-auto px-4 py-12 sm:py-16 pb-28 flex flex-col items-center justify-start shrink-0">
         
-        {/* Hero Title */}
-        <div className="text-center max-w-2xl mx-auto mb-8">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-100 text-[#1a73e8] text-xs font-bold mb-4 shadow-2xs">
-            <ShieldCheck className="w-3.5 h-3.5" />
-            <span>Corporate Domain & Email Authentication via Resend API</span>
-          </div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-zinc-900 tracking-tight leading-tight mb-3">
-            Manage your verified business on Yoouz
+        {/* Header */}
+        <div className="text-center w-full mb-8">
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+            Sign in to Yoouz Business
           </h1>
-          <p className="text-zinc-600 text-sm sm:text-base leading-relaxed">
-            Monitor authentic 60-second customer video reviews, reply with an official verified owner badge, auto-sync video embeds to your website, and drive direct table bookings.
+          <p className="text-zinc-400 text-sm mt-2 leading-relaxed">
+            Manage your verified listing, video reviews, and customer engagement.
           </p>
         </div>
 
-        {/* 3 Main Action Modes Tabs */}
-        <div className="w-full max-w-xl bg-white p-1 rounded-2xl border border-zinc-200/90 shadow-sm flex mb-6">
-          <button
-            onClick={() => { setMode('signin'); setEmailError(null); }}
-            className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
-              mode === 'signin' 
-                ? 'bg-[#1a73e8] text-white shadow-sm' 
-                : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50'
-            }`}
-          >
-            <Mail className="w-3.5 h-3.5" />
-            <span>Sign In with Email</span>
-          </button>
-
-          <button
-            onClick={() => { setMode('claim'); setEmailError(null); }}
-            className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
-              mode === 'claim' 
-                ? 'bg-[#1a73e8] text-white shadow-sm' 
-                : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50'
-            }`}
-          >
-            <Building2 className="w-3.5 h-3.5" />
-            <span>Claim Your Venue</span>
-          </button>
-
-          <button
-            onClick={() => { setMode('demo'); }}
-            className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
-              mode === 'demo' 
-                ? 'bg-[#1a73e8] text-white shadow-sm' 
-                : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50'
-            }`}
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Instant Demo</span>
-          </button>
-        </div>
-
-        {/* Action Box Container */}
-        <div className="w-full max-w-xl bg-white rounded-3xl border border-zinc-200/90 shadow-xl p-6 sm:p-8 transition-all">
+        {/* Card */}
+        <div className="w-full bg-zinc-900 rounded-3xl border border-zinc-800/90 shadow-xl shadow-zinc-200/40 p-6 sm:p-8 transition-all">
           
-          {/* ==================================================== */}
-          {/* MODE 1: SIGN IN WITH OFFICIAL BUSINESS EMAIL (RESEND) */}
-          {/* ==================================================== */}
-          {mode === 'signin' && (
-            <div className="space-y-5">
+          {/* STEP 1: EMAIL INPUT */}
+          {step === 'email' && (
+            <form onSubmit={handleEmailSubmit} className="space-y-4">
               <div>
-                <h2 className="text-lg font-bold text-zinc-900 flex items-center gap-2">
-                  <span>Sign in to Business Management Suite</span>
-                </h2>
-                <p className="text-xs text-zinc-500 mt-1">
-                  Enter your official business email. We'll send you an instant 1-click magic link and 6-digit verification code.
-                </p>
+                <label className="block text-xs font-bold text-zinc-300 mb-1.5">
+                  Work Email
+                </label>
+                <div className="relative">
+                  <Mail className="w-4 h-4 text-zinc-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="email"
+                    required
+                    autoFocus
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@yourcompany.com"
+                    className="w-full pl-10 pr-4 py-3 bg-zinc-950 focus:bg-zinc-900 border border-zinc-800 rounded-xl text-sm text-white focus:outline-hidden focus:ring-2 focus:ring-[#1a73e8] transition-all"
+                  />
+                </div>
               </div>
 
-              {!emailSentSuccess ? (
-                <form onSubmit={handleSendMagicLink} className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-bold text-zinc-700 mb-1.5">
-                      Official Business Email
-                    </label>
-                    <div className="relative">
-                      <Mail className="w-4 h-4 text-zinc-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                      <input
-                        type="email"
-                        required
-                        value={businessEmail}
-                        onChange={(e) => setBusinessEmail(e.target.value)}
-                        placeholder="e.g. manager@therusticspoon.com"
-                        className="w-full pl-10 pr-4 py-3 bg-zinc-50 focus:bg-white border border-zinc-200 rounded-xl text-xs text-zinc-900 focus:outline-hidden focus:ring-2 focus:ring-[#1a73e8] font-medium"
-                      />
-                    </div>
+              {/* Optional selected venue indicator if previously picked */}
+              {selectedPlace && (
+                <div className="p-2.5 bg-zinc-950 rounded-xl border border-zinc-800 flex items-center justify-between text-xs">
+                  <div className="truncate pr-2">
+                    <span className="font-semibold text-zinc-200 block truncate">{selectedPlace.name}</span>
+                    <span className="text-[11px] text-zinc-400 block truncate">{selectedPlace.address}</span>
                   </div>
-
-                  {emailError && (
-                    <div className="p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2 text-xs text-red-700">
-                      <AlertCircle className="w-4 h-4 shrink-0" />
-                      <span>{emailError}</span>
-                    </div>
-                  )}
-
                   <button
-                    type="submit"
-                    disabled={isSendingEmail || !businessEmail}
-                    className="w-full py-3.5 bg-[#1a73e8] hover:bg-[#1557b0] disabled:bg-zinc-300 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                    type="button"
+                    onClick={() => setStep('select_place')}
+                    className="text-blue-400 text-xs font-semibold shrink-0 hover:underline cursor-pointer"
                   >
-                    {isSendingEmail ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        <span>Sending via Resend API...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="w-3.5 h-3.5" />
-                        <span>Send Magic Link & Code (Resend)</span>
-                      </>
-                    )}
+                    Change
                   </button>
-                </form>
-              ) : (
-                <div className="space-y-4 animate-in fade-in">
-                  <div className="p-4 bg-blue-50/80 border border-blue-200/80 rounded-2xl space-y-2">
-                    <div className="flex items-center gap-2 text-xs font-bold text-[#1a73e8]">
-                      <Check className="w-4 h-4" />
-                      <span>Verification Code Sent via Resend</span>
-                    </div>
-                    <p className="text-[11.5px] text-zinc-600 leading-relaxed">
-                      We dispatched a code to <strong className="text-zinc-900">{businessEmail}</strong>. Enter the 6-digit code below to unlock your portal:
-                    </p>
-                    {previewCode && (
-                      <div className="pt-2 flex items-center justify-between border-t border-blue-200/60">
-                        <span className="text-[10px] text-blue-700 font-bold">Demo Mode Test Code:</span>
-                        <button
-                          type="button"
-                          onClick={() => setOtpCode(previewCode)}
-                          className="px-2 py-0.5 rounded-md bg-[#1a73e8] text-white text-[10px] font-mono font-bold hover:bg-blue-700 cursor-pointer"
-                        >
-                          Auto-fill: {previewCode}
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  <form onSubmit={handleVerifyCode} className="space-y-3">
-                    <div>
-                      <label className="block text-xs font-bold text-zinc-700 mb-1.5">
-                        6-Digit Verification Code
-                      </label>
-                      <input
-                        type="text"
-                        maxLength={6}
-                        required
-                        value={otpCode}
-                        onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
-                        placeholder="123456"
-                        className="w-full text-center tracking-[8px] font-mono text-xl py-3 bg-zinc-50 focus:bg-white border border-zinc-300 rounded-xl text-zinc-900 focus:outline-hidden focus:ring-2 focus:ring-[#1a73e8] font-bold"
-                      />
-                    </div>
-
-                    {emailError && (
-                      <div className="p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2 text-xs text-red-700">
-                        <AlertCircle className="w-4 h-4 shrink-0" />
-                        <span>{emailError}</span>
-                      </div>
-                    )}
-
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setEmailSentSuccess(false)}
-                        className="px-4 py-3 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 rounded-xl text-xs font-bold transition-colors cursor-pointer"
-                      >
-                        Back
-                      </button>
-                      <button
-                        type="submit"
-                        disabled={isVerifyingCode || otpCode.length < 6}
-                        className="flex-1 py-3 bg-[#1a73e8] hover:bg-[#1557b0] disabled:bg-zinc-300 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
-                      >
-                        {isVerifyingCode ? (
-                          <>
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            <span>Verifying...</span>
-                          </>
-                        ) : (
-                          <>
-                            <ShieldCheck className="w-4 h-4" />
-                            <span>Verify & Enter Portal</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  </form>
                 </div>
               )}
-            </div>
+
+              {errorMessage && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2 text-xs text-red-700">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{errorMessage}</span>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={isLoading || !email}
+                className="w-full py-3.5 bg-[#1a73e8] hover:bg-[#1557b0] disabled:bg-zinc-800 disabled:text-zinc-400 text-white rounded-xl text-sm font-bold shadow-md shadow-blue-600/15 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99]"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Continuing...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Continue with Magic Link</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
+              </button>
+            </form>
           )}
 
-          {/* ==================================================== */}
-          {/* MODE 2: CLAIM / REGISTER A VENUE LISTING */}
-          {/* ==================================================== */}
-          {mode === 'claim' && (
-            <div className="space-y-5">
-              <div>
-                <h2 className="text-lg font-bold text-zinc-900 flex items-center gap-2">
-                  <span>Claim & Verify Your Listing</span>
-                </h2>
-                <p className="text-xs text-zinc-500 mt-1">
-                  Select your venue and verify domain ownership via corporate email or HTML meta tag.
+          {/* STEP 2: CODE VERIFICATION */}
+          {step === 'code' && (
+            <div className="space-y-5 animate-in fade-in">
+              <div className="text-center space-y-1">
+                <h2 className="text-base font-bold text-white">Check your inbox</h2>
+                <p className="text-xs text-zinc-400">
+                  We sent a 6-digit code to <strong className="text-zinc-200">{email}</strong>
                 </p>
               </div>
 
-              {/* Selected Venue Preview & Switcher */}
-              <div className="space-y-2">
-                <label className="block text-xs font-bold text-zinc-700">Select Business Venue</label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={claimSearch}
-                    onChange={(e) => setClaimSearch(e.target.value)}
-                    placeholder="Search venue name (e.g. The Rustic Spoon, Levain, UPS)..."
-                    className="w-full pl-9 pr-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-xs text-zinc-900 focus:outline-hidden focus:ring-2 focus:ring-[#1a73e8]"
-                  />
-                  <Building2 className="w-4 h-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              {previewCode && (
+                <div className="p-2.5 bg-blue-50/80 border border-blue-900/50/80 rounded-xl flex items-center justify-between text-xs">
+                  <span className="text-blue-700 font-medium">Demo test code:</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const digits = previewCode.split('');
+                      setOtpDigits(digits);
+                      verifyCode(previewCode);
+                    }}
+                    className="px-2.5 py-1 rounded-lg bg-[#1a73e8] text-white text-xs font-mono font-bold hover:bg-blue-700 cursor-pointer shadow-2xs"
+                  >
+                    Auto-fill: {previewCode}
+                  </button>
+                </div>
+              )}
+
+              <form onSubmit={(e) => { e.preventDefault(); verifyCode(otpDigits.join('')); }} className="space-y-4">
+                <div className="flex items-center justify-center gap-2">
+                  {otpDigits.map((digit, idx) => (
+                    <input
+                      key={idx}
+                      ref={(el) => { inputRefs.current[idx] = el; }}
+                      type="text"
+                      maxLength={1}
+                      value={digit}
+                      onChange={(e) => handleDigitChange(idx, e.target.value)}
+                      onKeyDown={(e) => handleKeyDown(idx, e)}
+                      className="w-10 sm:w-11 h-12 text-center text-xl font-mono font-bold bg-zinc-950 focus:bg-zinc-900 border border-zinc-800 focus:border-[#1a73e8] rounded-xl text-white focus:outline-hidden transition-all"
+                    />
+                  ))}
                 </div>
 
-                {claimSearch.trim() && (
-                  <div className="max-h-36 overflow-y-auto bg-white border border-zinc-200 rounded-xl shadow-md p-1 space-y-1">
-                    {filteredPlaces.slice(0, 4).map((p) => (
-                      <button
-                        key={p.id}
-                        type="button"
-                        onClick={() => {
-                          setSelectedPlace(p);
-                          setWebsiteUrl(p.website || '');
-                          setClaimSearch('');
-                        }}
-                        className="w-full px-3 py-2 text-left hover:bg-blue-50 rounded-lg text-xs flex items-center justify-between cursor-pointer"
-                      >
-                        <div className="truncate">
-                          <span className="font-bold text-zinc-900 block truncate">{p.name}</span>
-                          <span className="text-[10px] text-zinc-400 block truncate">{p.address}</span>
-                        </div>
-                        <Check className="w-3.5 h-3.5 text-[#1a73e8]" />
-                      </button>
-                    ))}
+                {errorMessage && (
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2 text-xs text-red-700">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    <span>{errorMessage}</span>
                   </div>
                 )}
 
-                <div className="p-3 bg-zinc-50 rounded-xl border border-zinc-200 flex items-center justify-between">
-                  <div className="truncate">
-                    <span className="font-bold text-xs text-zinc-900 block truncate">{selectedPlace.name}</span>
-                    <span className="text-[10px] text-zinc-500 block truncate">{selectedPlace.address}</span>
-                  </div>
-                  <span className="px-2 py-0.5 rounded-md bg-blue-100 text-[#1a73e8] text-[10px] font-bold shrink-0">
-                    Selected
-                  </span>
-                </div>
-              </div>
-
-              {/* Verification Method Subtabs */}
-              <div className="flex bg-zinc-100 p-1 rounded-xl">
-                <button
-                  type="button"
-                  onClick={() => setClaimTab('email')}
-                  className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                    claimTab === 'email' ? 'bg-white text-zinc-900 shadow-2xs' : 'text-zinc-500'
-                  }`}
-                >
-                  Corporate Email (Resend)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setClaimTab('meta_tag')}
-                  className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                    claimTab === 'meta_tag' ? 'bg-white text-zinc-900 shadow-2xs' : 'text-zinc-500'
-                  }`}
-                >
-                  Website HTML Meta Tag
-                </button>
-              </div>
-
-              {claimTab === 'email' ? (
-                <form onSubmit={handleSendMagicLink} className="space-y-3">
-                  <div>
-                    <label className="block text-xs font-bold text-zinc-700 mb-1">
-                      Business Domain Email
-                    </label>
-                    <input
-                      type="email"
-                      required
-                      value={businessEmail}
-                      onChange={(e) => setBusinessEmail(e.target.value)}
-                      placeholder={`e.g. owner@${selectedPlace.website ? selectedPlace.website.replace(/^https?:\/\//, '').split('/')[0] : 'therusticspoon-nyc.com'}`}
-                      className="w-full px-3.5 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-xs text-zinc-900 focus:outline-hidden focus:ring-2 focus:ring-[#1a73e8]"
-                    />
-                  </div>
-
-                  {emailError && (
-                    <div className="p-2.5 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700">
-                      {emailError}
-                    </div>
-                  )}
-
-                  <button
-                    type="submit"
-                    disabled={isSendingEmail || !businessEmail}
-                    className="w-full py-3 bg-[#1a73e8] hover:bg-[#1557b0] disabled:bg-zinc-300 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
-                  >
-                    {isSendingEmail ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
-                    <span>Dispatch Verification Link</span>
-                  </button>
-                </form>
-              ) : (
-                <div className="space-y-3">
-                  <p className="text-xs text-zinc-600">
-                    Add this tag to your website homepage <code className="text-[#1a73e8] font-mono bg-blue-50 px-1 py-0.5 rounded">&lt;head&gt;</code>:
-                  </p>
-                  
-                  <div className="p-3 bg-zinc-900 rounded-xl font-mono text-[11px] text-blue-300 flex items-center justify-between">
-                    <span className="truncate">{expectedTagString}</span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        navigator.clipboard.writeText(expectedTagString);
-                        setCopiedTag(true);
-                        setTimeout(() => setCopiedTag(false), 2000);
-                      }}
-                      className="ml-2 px-2 py-1 bg-zinc-800 hover:bg-zinc-700 text-white rounded text-[10px] font-bold shrink-0 cursor-pointer"
-                    >
-                      {copiedTag ? 'Copied' : 'Copy'}
-                    </button>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-zinc-700 mb-1">Website URL</label>
-                    <input
-                      type="url"
-                      value={websiteUrl}
-                      onChange={(e) => setWebsiteUrl(e.target.value)}
-                      placeholder="https://therusticspoon-nyc.com"
-                      className="w-full px-3.5 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-xs text-zinc-900 focus:outline-hidden focus:ring-2 focus:ring-[#1a73e8]"
-                    />
-                  </div>
-
-                  {tagError && (
-                    <div className="p-2.5 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700">
-                      {tagError}
-                    </div>
-                  )}
-
-                  {tagSuccess && (
-                    <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-700 font-bold">
-                      Website meta tag verified! Launching dashboard...
-                    </div>
-                  )}
-
+                <div className="flex gap-2 pt-1">
                   <button
                     type="button"
-                    onClick={handleVerifyMetaTag}
-                    disabled={isCheckingTag || !websiteUrl}
-                    className="w-full py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-zinc-300 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer"
+                    onClick={() => { setStep('email'); setErrorMessage(null); }}
+                    className="px-4 py-3 bg-zinc-800 hover:bg-zinc-800 text-zinc-300 rounded-xl text-xs font-semibold transition-colors cursor-pointer"
                   >
-                    {isCheckingTag ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-                    <span>Verify Live Tag</span>
+                    Back
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isLoading || otpDigits.some(d => !d)}
+                    className="flex-1 py-3 bg-[#1a73e8] hover:bg-[#1557b0] disabled:bg-zinc-800 disabled:text-zinc-400 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/15 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Verifying...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Check className="w-4 h-4" />
+                        <span>Verify & Continue</span>
+                      </>
+                    )}
                   </button>
                 </div>
-              )}
+              </form>
             </div>
           )}
 
-          {/* ==================================================== */}
-          {/* MODE 3: 1-CLICK INSTANT DEMO MODE (TRY IT OUT FAST) */}
-          {/* ==================================================== */}
-          {mode === 'demo' && (
-            <div className="space-y-4">
+          {/* STEP 3: OPTIONAL PLACE SELECTOR */}
+          {step === 'select_place' && (
+            <div className="space-y-4 animate-in fade-in">
               <div>
-                <h2 className="text-lg font-bold text-zinc-900 flex items-center gap-2">
-                  <span>Try Out the Full Management Suite</span>
-                </h2>
-                <p className="text-xs text-zinc-500 mt-1">
-                  Experience all business features instantly with live analytics, video reviews, widget generator, and QR invite studio.
-                </p>
+                <h2 className="text-base font-bold text-white">Select your venue</h2>
+                <p className="text-xs text-zinc-400 mt-0.5">Choose the listing associated with your business.</p>
               </div>
 
-              <div className="space-y-3 pt-1">
-                <button
-                  type="button"
-                  onClick={() => handleLaunchDemo('rustic')}
-                  className="w-full p-4 rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 hover:border-blue-300 transition-all text-left flex items-center justify-between group cursor-pointer shadow-2xs hover:shadow-md"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-[#1a73e8] text-white flex items-center justify-center font-black text-base shadow-xs">
-                      R
-                    </div>
-                    <div>
-                      <div className="font-bold text-sm text-zinc-900 flex items-center gap-1.5">
-                        <span>The Rustic Spoon</span>
-                        <span className="px-1.5 py-0.2 rounded-md bg-emerald-100 text-emerald-800 text-[10px] font-bold">
-                          PRO TIER
-                        </span>
-                      </div>
-                      <div className="text-xs text-zinc-500 mt-0.5">
-                        Italian Dining • 42 Video Reviews • Website Carousel Active
-                      </div>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-5 h-5 text-[#1a73e8] group-hover:translate-x-1 transition-transform" />
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleLaunchDemo('ups')}
-                  className="w-full p-4 rounded-2xl bg-zinc-50 border border-zinc-200 hover:border-zinc-300 transition-all text-left flex items-center justify-between group cursor-pointer hover:bg-zinc-100"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-amber-700 text-white flex items-center justify-center font-black text-base shadow-xs">
-                      U
-                    </div>
-                    <div>
-                      <div className="font-bold text-sm text-zinc-900 flex items-center gap-1.5">
-                        <span>ups.com</span>
-                        <span className="px-1.5 py-0.2 rounded-md bg-blue-100 text-blue-800 text-[10px] font-bold">
-                          ENTERPRISE
-                        </span>
-                      </div>
-                      <div className="text-xs text-zinc-500 mt-0.5">
-                        Logistics & Retail • Verified Merchant Profile
-                      </div>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-5 h-5 text-zinc-400 group-hover:translate-x-1 transition-transform" />
-                </button>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search venue name..."
+                  className="w-full pl-9 pr-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-xs text-white focus:outline-hidden focus:ring-2 focus:ring-[#1a73e8]"
+                />
+                <Building2 className="w-4 h-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
               </div>
+
+              <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1">
+                {filteredPlaces.slice(0, 5).map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedPlace(p);
+                      setStep('email');
+                    }}
+                    className="w-full p-2.5 text-left rounded-xl hover:bg-blue-900/30 border border-zinc-800 hover:border-blue-900/50 flex items-center justify-between text-xs transition-colors cursor-pointer"
+                  >
+                    <div className="truncate pr-2">
+                      <span className="font-bold text-white block truncate">{p.name}</span>
+                      <span className="text-[10.5px] text-zinc-400 block truncate">{p.address}</span>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-zinc-400 shrink-0" />
+                  </button>
+                ))}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setStep('email')}
+                className="w-full py-2 bg-zinc-800 hover:bg-zinc-800 text-zinc-300 rounded-xl text-xs font-semibold transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
             </div>
           )}
 
         </div>
 
-        {/* 3 Value Pillars */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-4xl w-full mt-10">
-          <div className="p-4 rounded-2xl bg-white border border-zinc-200/80 shadow-2xs flex items-start gap-3">
-            <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-              <ShieldCheck className="w-4 h-4" />
-            </div>
-            <div>
-              <h4 className="text-xs font-bold text-zinc-900">Verified Owner Badge</h4>
-              <p className="text-[11px] text-zinc-500 mt-0.5">Reply with official credibility and pin your top reviews.</p>
-            </div>
-          </div>
-
-          <div className="p-4 rounded-2xl bg-white border border-zinc-200/80 shadow-2xs flex items-start gap-3">
-            <div className="w-9 h-9 rounded-xl bg-blue-50 text-[#1a73e8] flex items-center justify-center shrink-0">
-              <Code className="w-4 h-4" />
-            </div>
-            <div>
-              <h4 className="text-xs font-bold text-zinc-900">Website Video Embed</h4>
-              <p className="text-[11px] text-zinc-500 mt-0.5">Embed 60s video reviews on your website in under 60 seconds.</p>
-            </div>
-          </div>
-
-          <div className="p-4 rounded-2xl bg-white border border-zinc-200/80 shadow-2xs flex items-start gap-3">
-            <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
-              <QrCode className="w-4 h-4" />
-            </div>
-            <div>
-              <h4 className="text-xs font-bold text-zinc-900">Table QR Standees</h4>
-              <p className="text-[11px] text-zinc-500 mt-0.5">Generate printable QR standees for diners to record instantly.</p>
-            </div>
+        {/* Subtle Sample Business Previews */}
+        <div className="mt-8 text-center">
+          <span className="text-xs text-zinc-400 font-medium block mb-3">Or explore with a demo listing</span>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <button
+              onClick={() => handleLaunchDemo('rustic')}
+              className="px-3 py-1.5 rounded-full bg-zinc-900 border border-zinc-800 hover:border-blue-300 hover:bg-blue-900/30 text-xs font-medium text-zinc-300 hover:text-blue-400 transition-all cursor-pointer shadow-2xs"
+            >
+              The Rustic Spoon
+            </button>
+            <button
+              onClick={() => handleLaunchDemo('london')}
+              className="px-3 py-1.5 rounded-full bg-zinc-900 border border-zinc-800 hover:border-blue-300 hover:bg-blue-900/30 text-xs font-medium text-zinc-300 hover:text-blue-400 transition-all cursor-pointer shadow-2xs"
+            >
+              Londontrustedtherapy
+            </button>
+            <button
+              onClick={() => handleLaunchDemo('ups')}
+              className="px-3 py-1.5 rounded-full bg-zinc-900 border border-zinc-800 hover:border-blue-300 hover:bg-blue-900/30 text-xs font-medium text-zinc-300 hover:text-blue-400 transition-all cursor-pointer shadow-2xs"
+            >
+              ups.com
+            </button>
           </div>
         </div>
 

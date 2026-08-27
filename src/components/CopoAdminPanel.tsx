@@ -180,7 +180,7 @@ export const CopoAdminPanel: React.FC<CopoAdminPanelProps> = ({
 
     (allUsers || []).forEach((u) => {
       if (!u) return;
-      const cleanHandle = getCleanHandle(u.handle) || (u.email ? u.email.split("@")[0] : u.id) || "user";
+      const cleanHandle = getCleanHandle(u.name) || (u.email ? u.email.split("@")[0] : u.id) || "user";
       const key = (u.email || cleanHandle).toLowerCase().trim();
       if (!key) return;
 
@@ -209,7 +209,7 @@ export const CopoAdminPanel: React.FC<CopoAdminPanelProps> = ({
         isVerified: true
       };
       const cleanHandle =
-        getCleanHandle(author.handle) ||
+        getCleanHandle(author.name) ||
         (v.userEmail ? v.userEmail.split("@")[0] : getCleanHandle(v.userId) || "reviewer");
       const key = (v.userEmail || cleanHandle).toLowerCase().trim();
       if (!key) return;
@@ -267,7 +267,7 @@ export const CopoAdminPanel: React.FC<CopoAdminPanelProps> = ({
         !q ||
         (v.placeName && v.placeName.toLowerCase().includes(q)) ||
         (v.author?.name && v.author.name.toLowerCase().includes(q)) ||
-        (v.author?.handle && v.author.handle.toLowerCase().includes(q)) ||
+        (v.author?.name && v.author.name.toLowerCase().includes(q)) ||
         (v.caption && v.caption.toLowerCase().includes(q)) ||
         (v.id && v.id.toLowerCase().includes(q));
 
@@ -327,7 +327,7 @@ export const CopoAdminPanel: React.FC<CopoAdminPanelProps> = ({
       const matchQuery =
         !q ||
         (u.name && u.name.toLowerCase().includes(q)) ||
-        (u.handle && u.handle.toLowerCase().includes(q)) ||
+        (u.name && u.name.toLowerCase().includes(q)) ||
         (u.email && u.email.toLowerCase().includes(q));
 
       const matchType =
@@ -1635,7 +1635,7 @@ export const CopoAdminPanel: React.FC<CopoAdminPanelProps> = ({
                           </td>
                           <td className="p-4">
                             <div className="font-semibold text-zinc-700">{v.author?.name || "Reviewer"}</div>
-                            <div className="text-xs text-zinc-400">{v.author?.handle || v.userEmail || "user"}</div>
+                            <div className="text-xs text-zinc-400">{v.author?.name || v.userEmail || "user"}</div>
                           </td>
                           <td className="p-4">
                             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500/10 text-amber-600 font-bold text-xs">
@@ -1924,7 +1924,7 @@ export const CopoAdminPanel: React.FC<CopoAdminPanelProps> = ({
                   const userVideos = videos.filter((v) =>
                     isAuthorMatch(v, {
                       name: user.name,
-                      handle: `@${user.handle}`,
+                      handle: `@${user.name}`,
                       email: user.email,
                       uid: user.uid || user.id
                     })
@@ -1932,7 +1932,7 @@ export const CopoAdminPanel: React.FC<CopoAdminPanelProps> = ({
 
                   return (
                     <div
-                      key={user.handle || user.email || user.id}
+                      key={user.name || user.email || user.id}
                       className="p-5 rounded-2xl bg-white border border-zinc-200 hover:border-zinc-300 transition-all flex flex-col justify-between space-y-4"
                     >
                       <div className="flex items-center gap-3.5">
@@ -1944,7 +1944,7 @@ export const CopoAdminPanel: React.FC<CopoAdminPanelProps> = ({
                             <h3 className="font-bold text-zinc-900 text-base truncate">{user.name}</h3>
                             {user.isVerified && <BadgeCheck className="w-4 h-4 text-blue-600 shrink-0" />}
                           </div>
-                          <p className="text-xs text-zinc-400 truncate">@{user.handle}</p>
+                          
                           {user.email && <p className="text-xs text-zinc-400 truncate">{user.email}</p>}
                         </div>
                       </div>
@@ -1972,7 +1972,7 @@ export const CopoAdminPanel: React.FC<CopoAdminPanelProps> = ({
                             onClick={() => {
                               const userVidIds = userVideos.map((v) => v.id);
                               if (onBulkDeleteVideos) onBulkDeleteVideos(userVidIds);
-                              showToast(`Removed all ${userVidIds.length} reviews for @${user.handle}`);
+                              showToast(`Removed all ${userVidIds.length} reviews for @${user.name}`);
                             }}
                             className="px-2.5 py-1.5 text-red-400 hover:bg-red-500/10 rounded-xl text-xs font-bold transition-colors"
                             title="Remove this user's videos (keeps account intact)"
@@ -2286,7 +2286,7 @@ export const CopoAdminPanel: React.FC<CopoAdminPanelProps> = ({
                   />
                   <div>
                     <h4 className="font-bold text-sm text-zinc-900">{previewVideo.author?.name || "Reviewer"}</h4>
-                    <p className="text-xs text-zinc-400">@{previewVideo.author?.handle || "user"}</p>
+                    <p className="text-xs text-zinc-400">@{previewVideo.author?.name || "user"}</p>
                   </div>
                 </div>
 
@@ -2669,7 +2669,7 @@ export const CopoAdminPanel: React.FC<CopoAdminPanelProps> = ({
                 <label className="block text-xs font-bold text-zinc-400 mb-1">Handle (@username)</label>
                 <input
                   type="text"
-                  value={editUserModal.handle}
+                  value={editUserModal.name}
                   onChange={(e) => setEditUserModal({ ...editUserModal, handle: e.target.value.replace(/^@/, "") })}
                   className="w-full px-3.5 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-zinc-900"
                 />
@@ -2706,7 +2706,7 @@ export const CopoAdminPanel: React.FC<CopoAdminPanelProps> = ({
                 <button
                   type="button"
                   onClick={() => {
-                    showToast(`Updated user @${editUserModal.handle}.`);
+                    showToast(`Updated user @${editUserModal.name}.`);
                     setEditUserModal(null);
                   }}
                   className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl"

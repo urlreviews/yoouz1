@@ -7,7 +7,7 @@ import { VideoReview } from '../types';
 function normalizeReview(v: any): VideoReview {
   let author = v.author || {};
   let name = author.name || "Reviewer";
-  let handle = author.handle || "";
+  let handle = author.name || "";
 
   // Fix known seed inconsistency for Biz Riv
   if (name === "Biz Riv" || handle === "@louis42111" || v.userId === "louis42111@gmail.com") {
@@ -146,7 +146,7 @@ export function useFeedPagination() {
 
             const nextList: VideoReview[] = filtered.map(v => {
               const existing = prevMap.get(v.id);
-              const isFollowed = followedAuthors.includes(v.author.handle);
+              const isFollowed = followedAuthors.includes(v.author.name);
               const updatedV = { ...v, author: { ...v.author, isFollowed } };
               return existing ? { ...updatedV, localVideoUrl: existing.localVideoUrl || v.localVideoUrl } : updatedV;
             });
@@ -216,7 +216,7 @@ export function useFeedPagination() {
 
         const nextList: VideoReview[] = filtered.map(v => {
           const existing = prevMap.get(v.id);
-          const isFollowed = followedAuthors.includes(v.author.handle);
+          const isFollowed = followedAuthors.includes(v.author.name);
           const updatedV = { ...v, author: { ...v.author, isFollowed } };
           return existing ? { ...updatedV, localVideoUrl: existing.localVideoUrl || v.localVideoUrl } : updatedV;
         });

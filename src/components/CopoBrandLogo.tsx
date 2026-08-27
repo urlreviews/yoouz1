@@ -38,7 +38,7 @@ export const CopoBrandLogo: React.FC<CopoBrandLogoProps> = ({
       // Check if it's a generic favicon
       const isFavicon = logoUrl && (logoUrl.includes("favicon") || logoUrl.includes("gstatic.com") || logoUrl.includes("google.com/s2"));
 
-      if (logoUrl && (logoUrl.startsWith("http://") || logoUrl.startsWith("https://")) && !logoUrl.includes("ui-avatars") && !logoUrl.includes("dicebear") && !isFavicon) {
+      if (logoUrl && (logoUrl.startsWith("http://") || logoUrl.startsWith("https://") || logoUrl.startsWith("data:image")) && !logoUrl.includes("ui-avatars") && !logoUrl.includes("dicebear") && !isFavicon) {
         items.push({ url: logoUrl, fit: "contain" });
       }
   
@@ -50,7 +50,7 @@ export const CopoBrandLogo: React.FC<CopoBrandLogoProps> = ({
   
       // 3. Fallback to bannerUrl / ogImage (high quality brand representation!)
       // This guarantees we always have a gorgeous picture (e.g. from the page banner) if no brand logo is found!
-      if (bannerUrl && (bannerUrl.startsWith("http://") || bannerUrl.startsWith("https://"))) {
+      if (bannerUrl && (bannerUrl.startsWith("http://") || bannerUrl.startsWith("https://") || bannerUrl.startsWith("data:image"))) {
         items.push({ url: bannerUrl, fit: "cover" });
       }
 
@@ -60,7 +60,7 @@ export const CopoBrandLogo: React.FC<CopoBrandLogoProps> = ({
       }
 
       // 5. Explicit logoUrl (even if it's a favicon)
-      if (logoUrl && isFavicon && (logoUrl.startsWith("http://") || logoUrl.startsWith("https://"))) {
+      if (logoUrl && isFavicon && (logoUrl.startsWith("http://") || logoUrl.startsWith("https://") || logoUrl.startsWith("data:image"))) {
         items.push({ url: logoUrl, fit: "contain" });
       }
 

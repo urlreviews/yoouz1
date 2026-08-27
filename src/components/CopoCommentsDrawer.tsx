@@ -21,6 +21,8 @@ import { VideoReview, ReviewComment, UserProfile } from "../types";
 import { formatRecordedDate } from "../utils/dateUtils";
 import { getPlaceLogoUrl, getCleanLogoUrl } from "../utils/logoUtils";
 import { CopoBrandLogo } from "./CopoBrandLogo";
+import { triggerHaptic } from "../utils/haptics";
+import { useSwipeDownToDismiss } from "../hooks/useSwipeDownToDismiss";
 
 interface CopoCommentsDrawerProps {
   video: VideoReview | null;
@@ -32,7 +34,7 @@ interface CopoCommentsDrawerProps {
     text: string,
     options?: {
       replyToId?: string;
-      replyToHandle?: string;
+      
       postAsOwner?: boolean;
       postAsCreator?: boolean;
     }
@@ -131,7 +133,7 @@ export const CopoCommentsDrawer: React.FC<CopoCommentsDrawerProps> = ({
     const userHandle = userEmail ? userEmail.split("@")[0] : "";
     const userName = currentUser.name?.toLowerCase().trim() || "";
     
-    const vidAuthorHandle = video.author?.handle?.toLowerCase().trim() || "";
+    const vidAuthorHandle = video.author?.name?.toLowerCase().trim() || "";
     const vidAuthorName = video.author?.name?.toLowerCase().trim() || "";
     const vidUserId = video.userId?.toLowerCase().trim() || "";
     const vidUserEmail = video.userEmail?.toLowerCase().trim() || "";
@@ -260,7 +262,7 @@ export const CopoCommentsDrawer: React.FC<CopoCommentsDrawerProps> = ({
       // Post normal comment or reply
       onAddComment(video.id, text, {
         replyToId: replyingTo?.commentId,
-        replyToHandle: replyingTo?.handle,
+        //: replyingTo?.name,
         postAsOwner: isUserOwner && postAsOwner,
         postAsCreator: isUserCreator
       });
@@ -275,6 +277,11 @@ export const CopoCommentsDrawer: React.FC<CopoCommentsDrawerProps> = ({
     setCommentText("");
   };
 
+  const { dragOffsetY, swipeProps } = useSwipeDownToDismiss({
+    onDismiss: onClose,
+    threshold: 60
+  });
+
   if (!video) return null;
 
   const placeLogoUrl = video.placeLogoUrl 
@@ -285,6 +292,7 @@ export const CopoCommentsDrawer: React.FC<CopoCommentsDrawerProps> = ({
     <div
       onClick={(e) => {
         if (e.target === e.currentTarget) {
+          triggerHaptic("light");
           onClose();
         }
       }}
@@ -299,13 +307,22 @@ export const CopoCommentsDrawer: React.FC<CopoCommentsDrawerProps> = ({
         onWheel={(e) => e.stopPropagation()}
         onTouchMove={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}
-        className="w-full md:w-[460px] h-[100dvh] md:h-screen bg-zinc-950 md:bg-white text-white md:text-zinc-900 rounded-none md:rounded-none border-t md:border-l border-zinc-800 md:border-zinc-200 md:border-t-0 flex flex-col justify-between shadow-2xl animate-in slide-in-from-bottom md:slide-in-from-right duration-200 cursor-default overscroll-contain relative"
+        style={dragOffsetY > 0 ? { transform: `translateY(${dragOffsetY}px)`, transition: 'none' } : undefined}
+        className="w-full md:w-[460px] h-[100dvh] md:h-[100dvh] bg-zinc-950 md:bg-white text-white md:text-zinc-900 rounded-none md:rounded-none border-t md:border-l border-zinc-800 md:border-zinc-200 md:border-t-0 flex flex-col justify-between shadow-2xl animate-in slide-in-from-bottom md:slide-in-from-right duration-200 cursor-default overscroll-contain relative transition-transform"
       >
-        {/* Mobile Pull Handle Indicator */}
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 w-12 h-1.5 bg-zinc-700 md:bg-zinc-200 rounded-full z-30 md:hidden" />
+        {/* Mobile Pull Handle Indicator (Interactive Touch Area) */}
+        <div 
+          {...swipeProps} 
+          className="absolute top-0 left-0 right-0 h-8 flex items-center justify-center z-30 md:hidden cursor-grab active:cursor-grabbing touch-none"
+        >
+          <div className="w-12 h-1.5 bg-zinc-700 md:bg-zinc-200 rounded-full" />
+        </div>
 
         {/* Header */}
-        <div className="px-5 pt-7 pb-4 md:pt-4 border-b border-zinc-800 md:border-zinc-200 bg-zinc-950 md:bg-white shrink-0 rounded-t-none md:rounded-none">
+        <div 
+          {...swipeProps}
+          className="px-5 pt-7 pb-4 md:pt-4 border-b border-zinc-800 md:border-zinc-200 bg-zinc-950 md:bg-white shrink-0 rounded-t-none md:rounded-none touch-pan-y"
+        >
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-full bg-blue-950/60 md:bg-blue-50 border border-blue-800/60 md:border-blue-100/50 text-blue-400 md:text-blue-600 flex items-center justify-center font-bold shrink-0">
@@ -325,7 +342,10 @@ export const CopoCommentsDrawer: React.FC<CopoCommentsDrawerProps> = ({
             </div>
 
             <button
-              onClick={onClose}
+              onClick={() => {
+                triggerHaptic("light");
+                onClose();
+              }}
               className="w-8 h-8 rounded-full bg-zinc-850 md:bg-zinc-100/80 flex items-center justify-center text-zinc-400 md:text-zinc-500 hover:text-white md:hover:text-zinc-900 hover:bg-zinc-800 md:hover:bg-zinc-200 transition-colors shrink-0"
               title="Close comments"
             >
@@ -477,9 +497,9 @@ export const CopoCommentsDrawer: React.FC<CopoCommentsDrawerProps> = ({
                 const isCommentAuthorCreator =
                   Boolean(comment.isCreator) ||
                   (comment.authorHandle &&
-                    video.author?.handle &&
+                    video.author?.name &&
                     comment.authorHandle.toLowerCase().trim() ===
-                      video.author.handle.toLowerCase().trim()) ||
+                      video.author.name.toLowerCase().trim()) ||
                   (comment.authorHandle &&
                     video.userEmail &&
                     comment.authorHandle.toLowerCase().trim() ===
@@ -648,9 +668,9 @@ export const CopoCommentsDrawer: React.FC<CopoCommentsDrawerProps> = ({
                               const isReplyAuthorCreator =
                                 Boolean(reply.isCreator) ||
                                 (reply.authorHandle &&
-                                  video.author?.handle &&
+                                  video.author?.name &&
                                   reply.authorHandle.toLowerCase().trim() ===
-                                    video.author.handle.toLowerCase().trim()) ||
+                                    video.author.name.toLowerCase().trim()) ||
                                 (reply.authorHandle &&
                                   video.userEmail &&
                                   reply.authorHandle.toLowerCase().trim() ===
@@ -708,11 +728,6 @@ export const CopoCommentsDrawer: React.FC<CopoCommentsDrawerProps> = ({
 
                                     {/* Reply text with optional replyTo tag */}
                                     <p className="text-zinc-300 md:text-zinc-800 mt-0.5 text-xs leading-relaxed font-normal">
-                                      {reply.replyToHandle && (
-                                        <span className="text-blue-400 md:text-[#1a73e8] font-bold mr-1">
-                                          @{reply.replyToHandle.replace(/^@+/, "")}
-                                        </span>
-                                      )}
                                       {reply.text}
                                     </p>
 

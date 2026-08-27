@@ -12,10 +12,12 @@ import {
   Sparkles,
   ArrowRight,
   User,
-  Heart
+  Heart,
+  ChevronLeft
 } from "lucide-react";
 import { Place, VideoReview, VideoAuthor, UserProfile } from "../types";
 import { CopoAuthPrompt } from "./CopoGoogleAuthModal";
+import { CopoBrandLogo } from "./CopoBrandLogo";
 
 interface CopoFollowingViewProps {
   places: Place[];
@@ -29,6 +31,7 @@ interface CopoFollowingViewProps {
   onOpenCreator: (author: VideoAuthor) => void;
   onToggleFollow: (authorHandle: string) => void;
   onToggleFollowPlace: (placeId: string) => void;
+  onNavigateHome?: () => void;
   onSuccessAuth?: (userData: { name: string; email: string; avatar: string }) => void;
 }
 
@@ -44,6 +47,7 @@ export const CopoFollowingView: React.FC<CopoFollowingViewProps> = ({
   onOpenCreator,
   onToggleFollow,
   onToggleFollowPlace,
+  onNavigateHome,
   onSuccessAuth
 }) => {
   const [activeTab, setActiveTab] = useState<"activity" | "guides" | "businesses">("activity");
@@ -53,8 +57,8 @@ export const CopoFollowingView: React.FC<CopoFollowingViewProps> = ({
   const allAuthors = useMemo(() => {
     const map = new Map<string, VideoAuthor>();
     videos.forEach((v) => {
-      if (v.author && v.author.handle) {
-        map.set(v.author.handle, v.author);
+      if (v.author && v.author.name) {
+        map.set(v.author.name, v.author);
       }
     });
     return Array.from(map.values());
@@ -98,7 +102,7 @@ export const CopoFollowingView: React.FC<CopoFollowingViewProps> = ({
   // Unauthenticated Gating View
   if (!currentUser) {
     return (
-      <div className="flex-1 h-full overflow-y-auto bg-zinc-950 md:bg-white text-white md:text-zinc-900 flex flex-col justify-between" style={{ paddingBottom: 'calc(5.5rem + env(safe-area-inset-bottom, 0px))' }}>
+      <div className="flex-1 h-full overflow-y-auto bg-zinc-950 md:bg-white text-white md:text-zinc-900 flex flex-col justify-between pb-32 md:pb-6">
         <CopoAuthPrompt
           intent="following"
           onOpenHelp={onOpenHelp}
@@ -111,18 +115,29 @@ export const CopoFollowingView: React.FC<CopoFollowingViewProps> = ({
   }
 
   return (
-    <div className="flex-1 h-full overflow-y-auto bg-zinc-950 md:bg-zinc-50 text-white md:text-zinc-900 p-3.5 sm:p-6 select-none" style={{ paddingBottom: 'calc(5.5rem + env(safe-area-inset-bottom, 0px))' }}>
-      <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6">
+    <div className="flex-1 h-full overflow-y-auto bg-zinc-950 md:bg-zinc-50 text-white md:text-zinc-900 p-3.5 sm:p-6 select-none">
+      <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6 pb-32 md:pb-6">
         {/* Header section matching Google Maps Native App Style */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-zinc-900 md:bg-white p-4.5 sm:p-6 rounded-3xl border border-zinc-800 md:border-zinc-200/80 shadow-2xs">
-          <div className="space-y-1">
-            <h1 className="text-xl sm:text-2xl font-black text-white md:text-zinc-950 tracking-tight flex items-center gap-2 font-['Google_Sans',sans-serif]">
-              <Users className="w-5 h-5 sm:w-6 sm:h-6 text-[#1a73e8]" />
-              <span>Following Directory</span>
-            </h1>
-            <p className="text-xs text-zinc-400 md:text-zinc-500 font-medium leading-relaxed">
-              Discover updates, follow recommended local guides, and track favorite local businesses.
-            </p>
+          <div className="flex items-center gap-3">
+            {onNavigateHome && (
+              <button
+                onClick={onNavigateHome}
+                className="w-9 h-9 rounded-full bg-zinc-800 md:bg-zinc-100 hover:bg-zinc-700 md:hover:bg-zinc-200 text-zinc-300 md:text-zinc-700 flex items-center justify-center transition-colors cursor-pointer shrink-0 active:scale-95 shadow-sm border border-zinc-700/80 md:border-zinc-200"
+                title="Back to Feed"
+              >
+                <ChevronLeft className="w-5 h-5 stroke-[2.5]" />
+              </button>
+            )}
+            <div className="space-y-1">
+              <h1 className="text-xl sm:text-2xl font-black text-white md:text-zinc-950 tracking-tight flex items-center gap-2 font-['Google_Sans',sans-serif]">
+                <Users className="w-5 h-5 sm:w-6 sm:h-6 text-[#1a73e8]" />
+                <span>Following Directory</span>
+              </h1>
+              <p className="text-xs text-zinc-400 md:text-zinc-500 font-medium leading-relaxed">
+                Discover updates, follow recommended local guides, and track favorite local businesses.
+              </p>
+            </div>
           </div>
           <div className="flex items-center justify-around sm:justify-center gap-4 bg-zinc-950 md:bg-zinc-50 border border-zinc-800 md:border-zinc-200/70 rounded-2xl px-5 py-2.5 shrink-0">
             <div className="text-center pr-4 border-r border-zinc-800 md:border-zinc-200/80">
@@ -278,7 +293,7 @@ export const CopoFollowingView: React.FC<CopoFollowingViewProps> = ({
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {suggestedAuthors.slice(0, 2).map((author) => (
                       <div
-                        key={`activity-suggest-${author.handle}`}
+                        key={`activity-suggest-${author.name}`}
                         className="p-3.5 sm:p-4 bg-zinc-900 md:bg-white border border-zinc-800 md:border-zinc-200/90 rounded-2xl flex items-center justify-between gap-3 shadow-2xs hover:border-zinc-700 md:hover:border-zinc-300 transition-colors"
                       >
                         <div
@@ -298,7 +313,7 @@ export const CopoFollowingView: React.FC<CopoFollowingViewProps> = ({
                           </div>
                         </div>
                         <button
-                          onClick={() => onToggleFollow(author.handle)}
+                          onClick={() => onToggleFollow(author.name)}
                           className="shrink-0 px-3.5 py-1.5 rounded-full bg-[#1a73e8] hover:bg-blue-700 text-white font-extrabold text-[11px] sm:text-xs inline-flex items-center gap-1 cursor-pointer transition-colors shadow-2xs whitespace-nowrap active:scale-95"
                         >
                           <UserPlus className="w-3.5 h-3.5" />
@@ -365,7 +380,7 @@ export const CopoFollowingView: React.FC<CopoFollowingViewProps> = ({
                     <div className="space-y-3">
                       {followedAuthors.map((author) => (
                         <div
-                          key={`guide-following-${author.handle}`}
+                          key={`guide-following-${author.name}`}
                           className="p-3.5 sm:p-4 bg-zinc-900 md:bg-white border border-zinc-800 md:border-zinc-200/90 rounded-2xl flex items-center justify-between gap-3 shadow-2xs hover:border-zinc-700 md:hover:border-zinc-300 transition-colors"
                         >
                           <div
@@ -385,7 +400,7 @@ export const CopoFollowingView: React.FC<CopoFollowingViewProps> = ({
                             </div>
                           </div>
                           <button
-                            onClick={() => onToggleFollow(author.handle)}
+                            onClick={() => onToggleFollow(author.name)}
                             className="shrink-0 px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-full bg-zinc-800 md:bg-zinc-100 hover:bg-zinc-700 md:hover:bg-zinc-200 text-zinc-200 md:text-zinc-800 border border-zinc-700 md:border-zinc-200 font-extrabold text-[11px] sm:text-xs inline-flex items-center gap-1 transition-all cursor-pointer shadow-2xs whitespace-nowrap active:scale-95"
                           >
                             <UserCheck className="w-3.5 h-3.5 text-emerald-400 md:text-emerald-600" />
@@ -422,7 +437,7 @@ export const CopoFollowingView: React.FC<CopoFollowingViewProps> = ({
                   ) : (
                     suggestedAuthors.map((author) => (
                       <div
-                        key={`guide-suggest-${author.handle}`}
+                        key={`guide-suggest-${author.name}`}
                         className="p-3.5 sm:p-4 bg-zinc-900 md:bg-white border border-zinc-800 md:border-zinc-200/90 rounded-2xl flex items-center justify-between gap-3 shadow-2xs hover:border-zinc-700 md:hover:border-zinc-300 transition-colors animate-in fade-in duration-200"
                       >
                         <div
@@ -442,7 +457,7 @@ export const CopoFollowingView: React.FC<CopoFollowingViewProps> = ({
                           </div>
                         </div>
                         <button
-                          onClick={() => onToggleFollow(author.handle)}
+                          onClick={() => onToggleFollow(author.name)}
                           className="shrink-0 px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-full bg-[#1a73e8] hover:bg-blue-700 text-white font-extrabold text-[11px] sm:text-xs inline-flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs whitespace-nowrap active:scale-95"
                         >
                           <UserPlus className="w-3.5 h-3.5" />
@@ -481,13 +496,16 @@ export const CopoFollowingView: React.FC<CopoFollowingViewProps> = ({
                           onClick={() => onOpenPlace(place.id)}
                           className="flex items-start gap-3 cursor-pointer group min-w-0"
                         >
-                          <div className="w-12 h-12 rounded-xl bg-zinc-800 md:bg-zinc-100 border border-zinc-700 md:border-zinc-150 overflow-hidden flex items-center justify-center font-bold text-zinc-200 md:text-zinc-700 shrink-0 group-hover:scale-105 transition-transform">
-                            {place.avatarUrl ? (
-                              <img src={place.avatarUrl} alt={place.name} className="w-full h-full object-cover" />
-                            ) : (
-                              place.name.charAt(0)
-                            )}
-                          </div>
+                          <CopoBrandLogo
+                            domain={place.brandDomain}
+                            name={place.name}
+                            website={place.website || place.address}
+                            logoUrl={place.logoUrl || place.avatarUrl}
+                            bannerUrl={place.bannerUrl || place.ogImage}
+                            className="w-12 h-12 rounded-xl bg-zinc-800 md:bg-zinc-100 border border-zinc-700 md:border-zinc-200 overflow-hidden flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform shadow-sm"
+                            imageClassName="w-full h-full object-contain [image-rendering:-webkit-optimize-contrast]"
+                            fallbackTextClassName="font-bold text-lg text-zinc-300 md:text-zinc-600"
+                          />
                           <div className="min-w-0 flex-1 text-left">
                             <h4 className="font-bold text-xs sm:text-sm text-white md:text-zinc-950 group-hover:text-[#1a73e8] transition-colors truncate">
                               {place.name}
@@ -533,13 +551,16 @@ export const CopoFollowingView: React.FC<CopoFollowingViewProps> = ({
                           onClick={() => onOpenPlace(place.id)}
                           className="flex items-start gap-3 cursor-pointer group min-w-0"
                         >
-                          <div className="w-12 h-12 rounded-xl bg-zinc-800 md:bg-zinc-100 border border-zinc-700 md:border-zinc-150 overflow-hidden flex items-center justify-center font-bold text-zinc-200 md:text-zinc-700 shrink-0 group-hover:scale-105 transition-transform">
-                            {place.avatarUrl ? (
-                              <img src={place.avatarUrl} alt={place.name} className="w-full h-full object-cover" />
-                            ) : (
-                              place.name.charAt(0)
-                            )}
-                          </div>
+                          <CopoBrandLogo
+                            domain={place.brandDomain}
+                            name={place.name}
+                            website={place.website || place.address}
+                            logoUrl={place.logoUrl || place.avatarUrl}
+                            bannerUrl={place.bannerUrl || place.ogImage}
+                            className="w-12 h-12 rounded-xl bg-zinc-800 md:bg-zinc-100 border border-zinc-700 md:border-zinc-200 overflow-hidden flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform shadow-sm"
+                            imageClassName="w-full h-full object-contain [image-rendering:-webkit-optimize-contrast]"
+                            fallbackTextClassName="font-bold text-lg text-zinc-300 md:text-zinc-600"
+                          />
                           <div className="min-w-0 flex-1 text-left">
                             <h4 className="font-bold text-xs sm:text-sm text-white md:text-zinc-950 group-hover:text-[#1a73e8] transition-colors truncate">
                               {place.name}

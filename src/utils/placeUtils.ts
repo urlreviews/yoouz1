@@ -175,7 +175,7 @@ export function isAuthorMatch(
     targetUserId = raw;
     targetUid = raw;
   } else {
-    targetHandle = (authorOrUser.handle || "").replace(/^@/, "").trim().toLowerCase();
+    targetHandle = (authorOrUser.name || "").replace(/^@/, "").trim().toLowerCase();
     targetEmail = ("email" in authorOrUser && authorOrUser.email ? authorOrUser.email : "").trim().toLowerCase();
     targetName = (authorOrUser.name || "").trim().toLowerCase();
     targetUserId = ("userId" in authorOrUser && authorOrUser.userId ? authorOrUser.userId : "").trim().toLowerCase();
@@ -188,7 +188,7 @@ export function isAuthorMatch(
     ).trim().toLowerCase();
   }
 
-  const vHandle = (video.author?.handle || "").replace(/^@/, "").trim().toLowerCase();
+  const vHandle = (video.author?.name || "").replace(/^@/, "").trim().toLowerCase();
   const vEmail = (video.userEmail || video.userId || "").trim().toLowerCase();
   const vName = (video.author?.name || "").trim().toLowerCase();
   const vUserId = (video.userId || "").trim().toLowerCase();

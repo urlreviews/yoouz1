@@ -17,7 +17,7 @@ export interface CreateNotificationParams {
   type: "like" | "comment" | "follow" | "repost" | "message";
   user: {
     name: string;
-    handle: string;
+    ////handle: string;
     avatar: string;
     email?: string;
   };
@@ -73,7 +73,7 @@ export async function sendSocialNotification(params: CreateNotificationParams): 
     type: params.type,
     user: {
       name: params.user.name || "Yoouz Member",
-      handle: (params.user.handle || "").replace(/^@/, "") || params.user.name?.toLowerCase().replace(/\s+/g, "") || "member",
+      ////handle: (params.user.name || "").replace(/^@/, "") || params.user.name?.toLowerCase().replace(/\s+/g, "") || "member",
       avatar: params.user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(params.user.name || "User")}&background=1a73e8&color=fff`,
       email: senderEmail
     },
@@ -107,7 +107,7 @@ export function subscribeToNotifications(
 
   const userEmail = (currentUser.email || "").toLowerCase().trim();
   const emailPrefix = userEmail ? userEmail.split("@")[0].toLowerCase() : "";
-  const userHandle = (currentUser.handle || currentUser.name || "").toLowerCase().replace(/^@/, "").replace(/\s+/g, "");
+  const userHandle = (currentUser.name || currentUser.name || "").toLowerCase().replace(/^@/, "").replace(/\s+/g, "");
   const userName = (currentUser.name || "").toLowerCase().trim();
   const userId = (currentUser.userId || "").toLowerCase().trim();
 
@@ -145,7 +145,7 @@ export function subscribeToNotifications(
               type: data.type || "like",
               user: {
                 name: data.user?.name || "Yoouz Member",
-                handle: data.user?.handle ? `@${data.user.handle.replace(/^@/, "")}` : "@member",
+                ////handle: data.user?.name ? `@${data.user.name.replace(/^@/, "")}` : "@member",
                 avatar: data.user?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(data.user?.name || "User")}&background=1a73e8&color=fff`
               },
               text: data.text || "",
@@ -234,7 +234,7 @@ export function subscribeToChats(
 
   const userEmail = (currentUser.email || "").toLowerCase().trim();
   const emailPrefix = userEmail ? userEmail.split("@")[0].toLowerCase() : "";
-  const userHandle = (currentUser.handle || currentUser.name || "").toLowerCase().replace(/^@/, "").replace(/\s+/g, "");
+  const userHandle = (currentUser.name || currentUser.name || "").toLowerCase().replace(/^@/, "").replace(/\s+/g, "");
   const userName = (currentUser.name || "").toLowerCase().trim();
   const userId = (currentUser.userId || "").toLowerCase().trim();
 
@@ -258,12 +258,14 @@ export function subscribeToChats(
           const recipientId = (data.recipientId || "").toLowerCase().trim().replace(/^@/, "");
           const recipientName = (data.recipientName || "").toLowerCase().trim();
 
+          const isGenericName = !userName || userName === "reviewer" || userName === "user" || userName === "local guide" || userName === "guest";
+
           // Check if current user is part of this chat thread
           const isParticipant =
             (userEmail && (participants.includes(userEmail) || senderEmail === userEmail || recipientEmail === userEmail || senderId === userEmail || recipientId === userEmail)) ||
             (emailPrefix && (participants.includes(emailPrefix) || senderId === emailPrefix || recipientId === emailPrefix || senderEmail.startsWith(emailPrefix) || recipientEmail.startsWith(emailPrefix))) ||
             (userHandle && (participants.includes(userHandle) || senderId === userHandle || recipientId === userHandle)) ||
-            (userName && (participants.includes(userName) || senderName === userName || recipientName === userName)) ||
+            (!isGenericName && (participants.includes(userName) || senderName === userName || recipientName === userName)) ||
             (userId && (participants.includes(userId) || senderId === userId || recipientId === userId));
 
           if (isParticipant) {
@@ -397,7 +399,7 @@ export async function sendChatMessageToFirestore(
 ): Promise<CopoMessage> {
   const userEmail = (currentUser.email || "").toLowerCase().trim();
   const userName = (currentUser.name || "").trim();
-  const userHandle = (currentUser.handle || currentUser.name || "").replace(/^@/, "").trim().toLowerCase();
+  const userHandle = (currentUser.name || currentUser.name || "").replace(/^@/, "").trim().toLowerCase();
   const emailPrefix = userEmail ? userEmail.split("@")[0].toLowerCase() : "";
 
   const recipientEmail = (recipient.email || "").toLowerCase().trim();
@@ -535,7 +537,7 @@ export async function sendChatMessageToFirestore(
         type: "message",
         user: {
           name: currentUser.name,
-          handle: currentUser.email ? currentUser.email.split("@")[0] : (currentUser.name || "member"),
+          ////handle: currentUser.email ? currentUser.email.split("@")[0] : (currentUser.name || "member"),
           avatar: currentUser.avatar,
           email: userEmail
         },
@@ -568,7 +570,7 @@ export async function markChatThreadAsRead(threadId: string, currentUser: UserPr
   if (!db || !currentUser || !threadId) return;
   const userEmail = (currentUser.email || "").toLowerCase().trim();
   const emailPrefix = userEmail ? userEmail.split("@")[0].toLowerCase() : "";
-  const userHandle = (currentUser.handle || currentUser.name || "").toLowerCase().replace(/^@/, "").replace(/\s+/g, "");
+  const userHandle = (currentUser.name || currentUser.name || "").toLowerCase().replace(/^@/, "").replace(/\s+/g, "");
   const userName = (currentUser.name || "").toLowerCase().trim();
 
   try {

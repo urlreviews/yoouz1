@@ -50,13 +50,13 @@ export const SearchableComboSelector: React.FC<SearchableComboSelectorProps> = (
           }}
           onFocus={() => setIsOpen(true)}
           placeholder={placeholder}
-          className="w-full bg-zinc-50 border border-zinc-200 rounded-xl pl-3.5 pr-10 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/15 focus:border-blue-600 transition-all placeholder:text-zinc-400 font-medium text-zinc-800"
+          className="w-full bg-zinc-950 border border-zinc-800 rounded-xl pl-3.5 pr-10 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600/15 focus:border-blue-600 transition-all placeholder:text-zinc-400 font-medium text-zinc-200"
         />
         {options.length > 0 && (
           <button
             type="button"
             onClick={() => setIsOpen(!isOpen)}
-            className="absolute right-0 top-0 bottom-0 px-3 flex items-center justify-center text-zinc-400 hover:text-zinc-600 transition-colors cursor-pointer"
+            className="absolute right-0 top-0 bottom-0 px-3 flex items-center justify-center text-zinc-400 hover:text-zinc-400 transition-colors cursor-pointer"
           >
             <ChevronDown
               className={`w-4 h-4 transition-transform duration-200 ${
@@ -68,7 +68,7 @@ export const SearchableComboSelector: React.FC<SearchableComboSelectorProps> = (
       </div>
 
       {isOpen && options.length > 0 && (
-        <div className="absolute z-50 left-0 right-0 mt-1.5 bg-white border border-zinc-200 rounded-2xl shadow-xl animate-in fade-in slide-in-from-top-1 duration-150 overflow-hidden">
+        <div className="absolute z-50 left-0 right-0 mt-1.5 bg-zinc-950 border border-zinc-800 rounded-2xl shadow-xl animate-in fade-in slide-in-from-top-1 duration-150 overflow-hidden">
           <div className="max-h-40 overflow-y-auto py-1 scrollbar-thin">
             {filteredOptions.length === 0 ? (
               <div className="px-4 py-2.5 text-xs text-zinc-400 italic font-medium">
@@ -87,12 +87,12 @@ export const SearchableComboSelector: React.FC<SearchableComboSelectorProps> = (
                     }}
                     className={`w-full text-left px-4 py-2 text-xs flex items-center justify-between transition-colors cursor-pointer ${
                       isSelected
-                        ? "bg-blue-50 text-blue-600 font-semibold"
-                        : "text-zinc-700 hover:bg-zinc-50"
+                        ? "bg-blue-950/50 text-blue-400 font-semibold"
+                        : "text-zinc-300 hover:bg-zinc-800"
                     }`}
                   >
                     <span>{option}</span>
-                    {isSelected && <Check className="w-3.5 h-3.5 text-blue-600" />}
+                    {isSelected && <Check className="w-3.5 h-3.5 text-blue-400" />}
                   </button>
                 );
               })

@@ -117,7 +117,6 @@ export const CopoAuthPrompt: React.FC<{
       }
     } catch (err: any) {
       if (err?.code === 'auth/popup-closed-by-user' || err?.code === 'auth/cancelled-popup-request') {
-        // User closed or dismissed the popup cleanly
         return;
       }
       console.error("Google sign in failed:", err);
@@ -136,13 +135,12 @@ export const CopoAuthPrompt: React.FC<{
   };
 
   return (
-    <div className={`w-full ${isFullPage ? "min-h-full flex flex-col justify-between" : "flex flex-col items-center"} p-4 sm:p-8 select-none`}>
-      {/* Top Header if full page - Feedback and help only, no duplicate logo */}
+    <div className={`w-full ${isFullPage ? "min-h-full flex flex-col justify-between" : "flex flex-col items-center"} p-4 sm:p-8 select-none bg-[#09090b] text-white`}>
       {isFullPage && onOpenHelp && (
         <div className="w-full flex items-center justify-end py-2 mb-6">
           <button
             onClick={onOpenHelp}
-            className="flex items-center gap-1.5 text-xs font-semibold text-zinc-500 hover:text-zinc-800 transition-colors cursor-pointer px-3 py-1.5 rounded-full hover:bg-zinc-100"
+            className="flex items-center gap-1.5 text-[13px] font-semibold text-zinc-400 hover:text-white transition-colors cursor-pointer px-3 py-1.5 rounded-full hover:bg-white/[0.04]"
           >
             <HelpCircle className="w-4 h-4 text-zinc-400" />
             <span>Feedback and help</span>
@@ -150,31 +148,28 @@ export const CopoAuthPrompt: React.FC<{
         </div>
       )}
 
-      {/* Main Centered Content */}
       <div className="w-full max-w-md mx-auto my-auto flex flex-col items-center text-center space-y-7 py-4">
-        {/* Title & Context Copy */}
         <div className="space-y-3 max-w-sm">
-          <h1 className="text-2xl sm:text-3xl font-black text-zinc-950 tracking-tight font-['Google_Sans',sans-serif] leading-snug">
+          <h1 className="text-[26px] sm:text-3xl font-bold text-white tracking-tight font-['Google_Sans',sans-serif] leading-snug">
             {copy.title}
           </h1>
-          <p className="text-xs sm:text-sm text-zinc-500 font-normal leading-relaxed">
+          <p className="text-[14px] text-zinc-400 font-normal leading-relaxed">
             {copy.subtitle}
           </p>
         </div>
 
-        {/* Action Button: Single "Continue with Google" */}
-        <div className="w-full max-w-sm space-y-4">
+        <div className="w-full max-w-sm space-y-4 pt-2">
           <button
             type="button"
             onClick={handleSignIn}
             disabled={isSigningIn}
-            className="w-full h-[48px] px-4 rounded-xl bg-white hover:bg-zinc-50/90 active:bg-zinc-100 border border-zinc-300 hover:border-zinc-400 shadow-2xs transition-all cursor-pointer flex items-center justify-center relative disabled:opacity-60 disabled:cursor-not-allowed group"
+            className="w-full h-[52px] px-4 rounded-xl bg-[#18181b] hover:bg-white/[0.08] active:bg-white/[0.1] border border-white/[0.08] shadow-sm transition-all cursor-pointer flex items-center justify-center relative disabled:opacity-60 disabled:cursor-not-allowed group"
           >
-            <div className="absolute left-4 flex items-center justify-center">
+            <div className="absolute left-5 flex items-center justify-center">
               {isSigningIn ? (
                 <Loader2 className="w-5 h-5 animate-spin text-[#1a73e8]" />
               ) : (
-                <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
+                <svg className="w-[18px] h-[18px] shrink-0" viewBox="0 0 24 24">
                   <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z" />
                   <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.19v3.15C3.17 21.32 7.22 24 12 24z" />
                   <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.5-.38-2.27s.13-1.55.38-2.27H6.58H1.19C.43 8.1 0 9.98 0 12s.43 3.9 1.19 5.42l4.09-3.15z" />
@@ -182,33 +177,32 @@ export const CopoAuthPrompt: React.FC<{
                 </svg>
               )}
             </div>
-            <span className="font-bold text-sm text-zinc-800 group-hover:text-zinc-950">
+            <span className="font-bold text-[14.5px] text-white">
               {isSigningIn ? "Connecting with Google..." : "Continue with Google"}
             </span>
           </button>
 
           {errorMessage && (
-            <div className="p-3 bg-red-50 text-red-700 text-xs rounded-xl border border-red-200 text-center leading-normal flex items-center justify-center gap-2">
+            <div className="p-3 bg-red-950/40 text-red-400 text-xs rounded-xl border border-red-900/40 text-center leading-normal flex items-center justify-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
               <span>{errorMessage}</span>
             </div>
           )}
 
-          {/* Terms and Privacy Policy notice */}
           <p className="text-[11.5px] text-zinc-500 font-normal leading-relaxed max-w-xs mx-auto">
-            By continuing, you agree to Yoouz&apos;s{" "}
+            By continuing, you agree to Yoouz's{" "}
             <button
               type="button"
               onClick={() => onOpenLegal ? onOpenLegal('terms') : null}
-              className="font-semibold text-zinc-700 hover:text-[#1a73e8] underline cursor-pointer inline bg-transparent p-0 border-none"
+              className="font-semibold text-zinc-400 hover:text-white underline decoration-zinc-600 underline-offset-2 cursor-pointer inline bg-transparent p-0 border-none"
             >
               Terms of Service
             </button>{" "}
-            and confirm that you have read Yoouz&apos;s{" "}
+            and confirm that you have read Yoouz's{" "}
             <button
               type="button"
               onClick={() => onOpenLegal ? onOpenLegal('privacy') : null}
-              className="font-semibold text-zinc-700 hover:text-[#1a73e8] underline cursor-pointer inline bg-transparent p-0 border-none"
+              className="font-semibold text-zinc-400 hover:text-white underline decoration-zinc-600 underline-offset-2 cursor-pointer inline bg-transparent p-0 border-none"
             >
               Privacy Policy
             </button>
@@ -217,9 +211,8 @@ export const CopoAuthPrompt: React.FC<{
         </div>
       </div>
 
-      {/* Footer if full page */}
       {isFullPage && (
-        <div className="w-full pt-6 pb-2 text-center text-xs text-zinc-400 font-medium">
+        <div className="w-full pt-6 pb-2 text-center text-[12px] text-zinc-500 font-medium">
           © 2026 Yoouz. Real People. Real Reviews.
         </div>
       )}
@@ -227,9 +220,6 @@ export const CopoAuthPrompt: React.FC<{
   );
 };
 
-/**
- * Main Google Auth Modal Overlay
- */
 export const CopoGoogleAuthModal: React.FC<CopoGoogleAuthModalProps> = ({
   isOpen,
   onClose,
@@ -280,27 +270,25 @@ export const CopoGoogleAuthModal: React.FC<CopoGoogleAuthModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 sm:p-6 animate-in fade-in duration-200">
-      <div className="w-full max-w-lg bg-zinc-950 rounded-3xl shadow-2xl border border-zinc-800 text-zinc-100 flex flex-col relative animate-in zoom-in-95 duration-200 overflow-hidden">
+      <div className="w-full max-w-[420px] bg-[#09090b] rounded-[28px] shadow-2xl border border-white/[0.08] text-white flex flex-col relative animate-in zoom-in-95 duration-200 overflow-hidden">
         
-        {/* Top Header */}
-        <div className="flex items-center justify-end px-6 py-4 border-b border-zinc-800">
-          {/* Top Controls */}
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-end px-5 py-3.5 border-b border-white/[0.04]">
+          <div className="flex items-center gap-1.5">
             {onOpenHelp && (
               <button
                 onClick={() => {
                   onClose();
                   onOpenHelp();
                 }}
-                className="flex items-center gap-1 text-xs font-semibold text-zinc-400 hover:text-zinc-200 transition-colors px-2.5 py-1 rounded-lg hover:bg-zinc-800 cursor-pointer"
+                className="flex items-center gap-1.5 text-[13px] font-medium text-zinc-400 hover:text-white transition-colors px-3 py-1.5 rounded-full hover:bg-white/[0.06] cursor-pointer"
               >
-                <HelpCircle className="w-3.5 h-3.5" />
+                <HelpCircle className="w-[15px] h-[15px]" />
                 <span>Feedback and help</span>
               </button>
             )}
             <button
               onClick={onClose}
-              className="p-1.5 rounded-full text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 transition-all cursor-pointer"
+              className="p-1.5 rounded-full text-zinc-400 hover:text-white hover:bg-white/[0.06] transition-all cursor-pointer flex items-center justify-center"
               aria-label="Close"
             >
               <X className="w-5 h-5" />
@@ -308,31 +296,28 @@ export const CopoGoogleAuthModal: React.FC<CopoGoogleAuthModalProps> = ({
           </div>
         </div>
 
-        {/* Main Content Body */}
-        <div className="px-6 py-10 flex flex-col items-center text-center space-y-6">
-          {/* Title & Subtitle */}
-          <div className="space-y-2 max-w-sm">
-            <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white font-['Google_Sans',sans-serif]">
+        <div className="px-6 py-10 flex flex-col items-center text-center space-y-7">
+          <div className="space-y-3 max-w-[320px]">
+            <h2 className="text-[26px] font-bold tracking-tight text-white font-['Google_Sans',sans-serif]">
               {copy.title}
             </h2>
-            <p className="text-xs sm:text-sm text-zinc-400 font-normal leading-relaxed">
+            <p className="text-[14px] text-zinc-400 font-normal leading-relaxed">
               {copy.subtitle}
             </p>
           </div>
 
-          {/* Action Area */}
-          <div className="w-full max-w-sm space-y-4 pt-2">
+          <div className="w-full space-y-5 pt-2">
             <button
               type="button"
               onClick={handleFirebaseGoogleClick}
               disabled={isSigningIn}
-              className="w-full h-[48px] px-4 rounded-xl bg-zinc-900 hover:bg-zinc-800 active:bg-zinc-800 border border-zinc-700 hover:border-zinc-600 shadow-2xs transition-all cursor-pointer flex items-center justify-center relative disabled:opacity-60 disabled:cursor-not-allowed group"
+              className="w-full h-[52px] px-4 rounded-[14px] bg-[#18181b] hover:bg-white/[0.08] active:bg-white/[0.1] border border-white/[0.08] shadow-sm transition-all cursor-pointer flex items-center justify-center relative disabled:opacity-60 disabled:cursor-not-allowed group"
             >
-              <div className="absolute left-4 flex items-center justify-center">
+              <div className="absolute left-5 flex items-center justify-center">
                 {isSigningIn ? (
-                  <Loader2 className="w-5 h-5 animate-spin text-[#1a73e8]" />
+                  <Loader2 className="w-[18px] h-[18px] animate-spin text-white" />
                 ) : (
-                  <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
+                  <svg className="w-[18px] h-[18px] shrink-0" viewBox="0 0 24 24">
                     <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z" />
                     <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.19v3.15C3.17 21.32 7.22 24 12 24z" />
                     <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.5-.38-2.27s.13-1.55.38-2.27H6.58H1.19C.43 8.1 0 9.98 0 12s.43 3.9 1.19 5.42l4.09-3.15z" />
@@ -340,33 +325,32 @@ export const CopoGoogleAuthModal: React.FC<CopoGoogleAuthModalProps> = ({
                   </svg>
                 )}
               </div>
-              <span className="font-bold text-sm text-zinc-200 group-hover:text-white">
+              <span className="font-bold text-[14.5px] text-white">
                 {isSigningIn ? "Connecting with Google..." : "Continue with Google"}
               </span>
             </button>
 
             {errorMessage && (
-              <div className="p-3 bg-red-950/50 text-red-400 text-xs rounded-xl border border-red-900/50 text-center leading-normal flex items-center justify-center gap-2">
+              <div className="p-3 bg-red-950/40 text-red-400 text-xs rounded-xl border border-red-900/40 text-center leading-normal flex items-center justify-center gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
                 <span>{errorMessage}</span>
               </div>
             )}
 
-            {/* Terms and Privacy disclaimer */}
-            <p className="text-[11.5px] text-zinc-500 font-normal leading-relaxed max-w-xs mx-auto">
-              By continuing, you agree to Yoouz&apos;s{" "}
+            <p className="text-[11.5px] text-zinc-500 font-normal leading-relaxed max-w-[280px] mx-auto">
+              By continuing, you agree to Yoouz's{" "}
               <button
                 type="button"
                 onClick={() => onOpenLegal ? onOpenLegal('terms') : null}
-                className="font-semibold text-zinc-400 hover:text-[#1a73e8] underline cursor-pointer inline bg-transparent p-0 border-none"
+                className="font-bold text-zinc-400 hover:text-white underline decoration-zinc-600 underline-offset-2 cursor-pointer inline bg-transparent p-0 border-none"
               >
                 Terms of Service
               </button>{" "}
-              and confirm that you have read Yoouz&apos;s{" "}
+              and confirm that you have read Yoouz's{" "}
               <button
                 type="button"
                 onClick={() => onOpenLegal ? onOpenLegal('privacy') : null}
-                className="font-semibold text-zinc-400 hover:text-[#1a73e8] underline cursor-pointer inline bg-transparent p-0 border-none"
+                className="font-bold text-zinc-400 hover:text-white underline decoration-zinc-600 underline-offset-2 cursor-pointer inline bg-transparent p-0 border-none"
               >
                 Privacy Policy
               </button>
@@ -375,13 +359,10 @@ export const CopoGoogleAuthModal: React.FC<CopoGoogleAuthModalProps> = ({
           </div>
         </div>
 
-        {/* Clean Footer */}
-        <div className="px-6 py-3 bg-zinc-900/50 border-t border-zinc-800 flex items-center justify-center text-[11px] text-zinc-500 font-medium">
+        <div className="px-6 py-4 border-t border-white/[0.04] flex items-center justify-center text-[11.5px] text-zinc-500 font-medium">
           <span>© 2026 Yoouz. Real People. Real Reviews.</span>
         </div>
       </div>
     </div>
   );
 };
-
-

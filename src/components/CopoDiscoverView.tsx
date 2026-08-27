@@ -6,6 +6,7 @@ import {
   CheckCircle,
   Star,
   ChevronRight,
+  ChevronLeft,
   X,
   Sparkles,
   MapPin
@@ -17,10 +18,11 @@ interface CopoDiscoverViewProps {
   allUsers?: any[];
   currentUser?: UserProfile | null;
   onOpenCreator: (author: VideoAuthor) => void;
-  onToggleFollow?: (handle: string) => void;
+  onToggleFollow?: (name: string) => void;
   onStartChat?: (senderId: string, senderName: string, senderAvatar: string) => void;
   onSelectVideo?: (videoId: string, source?: string) => void;
   onOpenAuth?: () => void;
+  onNavigateHome?: () => void;
 }
 
 interface ReviewerData {
@@ -36,6 +38,7 @@ export const CopoDiscoverView: React.FC<CopoDiscoverViewProps> = ({
   allUsers = [],
   currentUser,
   onOpenCreator,
+  onNavigateHome
 }) => {
   const [query, setQuery] = useState("");
   const [fetchedDbUsers, setFetchedDbUsers] = useState<any[]>([]);
@@ -86,9 +89,9 @@ export const CopoDiscoverView: React.FC<CopoDiscoverViewProps> = ({
 
     // 1. Add reviewers from real video reviews
     videos.forEach((v) => {
-      if (v.author && (v.author.name || v.author.handle)) {
+      if (v.author && (v.author.name || v.author.name)) {
         const authorName = v.author.name || "Reviewer";
-        const rawHandle = (v.author.handle || authorName).replace(/^@+/, "");
+        const rawHandle = (v.author.name || authorName).replace(/^@+/, "");
         const normKey = getCleanKey(v.userEmail || v.userId, rawHandle, authorName);
         if (!normKey) return;
 
@@ -114,7 +117,7 @@ export const CopoDiscoverView: React.FC<CopoDiscoverViewProps> = ({
             author: {
               ...v.author,
               name: authorName,
-              handle: `@${rawHandle}`,
+              
               avatar: bestAvatar,
               isVerified: v.author.isVerified ?? true,
               isFollowed: Boolean(v.author.isFollowed),
@@ -142,16 +145,16 @@ export const CopoDiscoverView: React.FC<CopoDiscoverViewProps> = ({
         name: currentUser.name,
         email: currentUser.email,
         avatar: currentUser.avatar,
-        handle: currentUser.handle || currentUser.email?.split("@")[0] || currentUser.name.toLowerCase().replace(/[^a-z0-9_]/g, ""),
+        
         bio: currentUser.bio,
         followersCount: currentUser.followersCount
       });
     }
 
     sourceUsers.forEach((u) => {
-      if (u && (u.name || u.email || u.handle)) {
+      if (u && (u.name || u.email || u.name)) {
         const rawName = u.name || u.email?.split("@")[0] || "Reviewer";
-        const rawHandle = (u.handle || u.email?.split("@")[0] || rawName.toLowerCase().replace(/[^a-z0-9_]/g, "")).replace(/^@+/, "");
+        const rawHandle = (u.name || u.email?.split("@")[0] || rawName.toLowerCase().replace(/[^a-z0-9_]/g, "")).replace(/^@+/, "");
         const normKey = getCleanKey(u.email || u.uid || u.id, rawHandle, rawName);
         if (!normKey) return;
 
@@ -176,14 +179,14 @@ export const CopoDiscoverView: React.FC<CopoDiscoverViewProps> = ({
             existing.searchTokens.push(u.email.split("@")[0].toLowerCase());
           }
         } else {
-          const userVideos = videos.filter((v) => isAuthorMatch(v, { name: rawName, handle: `@${rawHandle}`, email: u.email }));
+          const userVideos = videos.filter((v) => isAuthorMatch(v, { name: rawName,  email: u.email }));
           const totalRating = userVideos.reduce((sum, item) => sum + (item.rating || 5), 0);
           const avgRating = userVideos.length > 0 ? Number((totalRating / userVideos.length).toFixed(1)) : 5.0;
 
           map.set(normKey, {
             author: {
               name: rawName,
-              handle: `@${rawHandle}`,
+              
               avatar: userAvatar,
               bio: u.bio || "Community reviewer on Yoouz.",
               isVerified: u.isVerified ?? true,
@@ -221,7 +224,7 @@ export const CopoDiscoverView: React.FC<CopoDiscoverViewProps> = ({
 
     return realReviewers.filter((item) => {
       const name = (item.author.name || "").toLowerCase();
-      const handle = (item.author.handle || "").toLowerCase().replace(/^@/, "");
+      const handle = (item.author.name || "").toLowerCase().replace(/^@/, "");
       const bio = (item.author.bio || "").toLowerCase();
       
       // Direct string containment
@@ -249,9 +252,22 @@ export const CopoDiscoverView: React.FC<CopoDiscoverViewProps> = ({
   return (
     <div
       id="copo-discover-root"
-      className="flex-1 h-full w-full relative overflow-y-auto bg-zinc-950 md:bg-white text-white md:text-zinc-900 flex flex-col items-center p-6 pt-10 pb-20 select-none"
+      className="flex-1 h-full w-full relative overflow-y-auto bg-zinc-950 md:bg-white text-white md:text-zinc-900 flex flex-col items-center p-4 sm:p-6 pt-6 sm:pt-10 pb-20 select-none"
     >
-      <div className="w-full max-w-3xl flex flex-col items-center animate-in fade-in zoom-in duration-500 mt-[4vh] sm:mt-[6vh]">
+      {onNavigateHome && (
+        <div className="w-full max-w-3xl flex justify-start mb-2">
+          <button
+            onClick={onNavigateHome}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-900 md:bg-zinc-100 hover:bg-zinc-800 md:hover:bg-zinc-200 text-zinc-300 md:text-zinc-700 text-xs font-bold transition-colors cursor-pointer border border-zinc-800 md:border-zinc-200 active:scale-95"
+            title="Back to Feed"
+          >
+            <ChevronLeft className="w-4 h-4 stroke-[2.5]" />
+            <span>Feed</span>
+          </button>
+        </div>
+      )}
+
+      <div className="w-full max-w-3xl flex flex-col items-center animate-in fade-in zoom-in duration-500 mt-[2vh] sm:mt-[4vh]">
         
         {/* Central Logo / Icon */}
         <div className="w-16 h-16 bg-zinc-900 md:bg-blue-50 border border-zinc-800 md:border-blue-100 rounded-full flex items-center justify-center mb-6 shadow-xs animate-fade-in shrink-0">
@@ -313,7 +329,7 @@ export const CopoDiscoverView: React.FC<CopoDiscoverViewProps> = ({
               {displayedReviewers.map((reviewer, idx) => {
                 return (
                   <div
-                    key={`reviewer-card-${reviewer.author.handle}-${idx}`}
+                    key={`reviewer-card-${reviewer.author.name}-${idx}`}
                     onClick={() => onOpenCreator(reviewer.author)}
                     className="bg-zinc-900 md:bg-white rounded-2xl border border-zinc-800 md:border-zinc-200 hover:border-blue-500 md:hover:border-blue-300 p-4 shadow-sm hover:shadow-md transition-all cursor-pointer flex items-center justify-between gap-4 group"
                   >
