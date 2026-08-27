@@ -1,0 +1,7 @@
+{
+  "name": "Reviuz",
+  "description": "Video review platform for local businesses.",
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
