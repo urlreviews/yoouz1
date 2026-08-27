@@ -70,6 +70,28 @@ export function useFeedPagination() {
   useEffect(() => {
     let active = true;
 
+    // Auto-sync any local cached videos to server/Firestore on boot so they appear across private windows & devices
+    const syncLocalToCloud = async () => {
+      try {
+        const cached = localStorage.getItem("yoouz_cached_videos_v16") || localStorage.getItem("copo_videos");
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            for (const v of parsed) {
+              if (v && v.id) {
+                fetch(`/api/nosql/videoReviews/${v.id}`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ data: v })
+                }).catch(() => {});
+              }
+            }
+          }
+        }
+      } catch (e) {}
+    };
+    syncLocalToCloud();
+
     // 1. Initial fast load from server API
     const loadServerData = async () => {
       const deletedStr = localStorage.getItem("copo_deleted_videos") || "[]";
