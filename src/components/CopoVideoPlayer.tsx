@@ -255,7 +255,6 @@ export const CopoVideoPlayer: React.FC<CopoVideoPlayerProps> = ({
               const idx = parseInt(idxAttr, 10);
               if (!isNaN(idx) && idx !== currentIndexRef.current) {
                 currentIndexRef.current = idx;
-                setHasUserStartedFeed(true);
                 onSelectVideoIndex(idx);
               }
             }
@@ -295,7 +294,6 @@ export const CopoVideoPlayer: React.FC<CopoVideoPlayerProps> = ({
   const handleNext = () => {
     if (currentIndex < videos.length - 1) {
       isProgrammaticScrollRef.current = true;
-      setHasUserStartedFeed(true);
       onSelectVideoIndex(currentIndex + 1);
     }
   };
@@ -303,7 +301,6 @@ export const CopoVideoPlayer: React.FC<CopoVideoPlayerProps> = ({
   const handlePrev = () => {
     if (currentIndex > 0) {
       isProgrammaticScrollRef.current = true;
-      setHasUserStartedFeed(true);
       onSelectVideoIndex(currentIndex - 1);
     }
   };

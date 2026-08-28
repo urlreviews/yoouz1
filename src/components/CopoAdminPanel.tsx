@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from "react";
+import React, { useState, useMemo, useRef, useEffect } from "react";
 import { VideoReview, Place, Club, ReviewComment, UserProfile } from "../types";
 import {
   Shield,
@@ -125,9 +125,16 @@ export const CopoAdminPanel: React.FC<CopoAdminPanelProps> = ({
 
   // Dialog & Modal States
   const [previewVideo, setPreviewVideo] = useState<VideoReview | null>(null);
-  const [isVideoPlaying, setIsVideoPlaying] = useState(true);
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+  const [hasVideoStarted, setHasVideoStarted] = useState(false);
   const [isVideoMuted, setIsVideoMuted] = useState(false);
   const videoPlayerRef = useRef<HTMLVideoElement | null>(null);
+
+  // Reset hasVideoStarted when previewVideo changes
+  useEffect(() => {
+    setHasVideoStarted(false);
+    setIsVideoPlaying(false);
+  }, [previewVideo?.id]);
 
   const [editPlaceModal, setEditPlaceModal] = useState<Place | null>(null);
   const [isAddPlaceOpen, setIsAddPlaceOpen] = useState(false);
@@ -2233,31 +2240,70 @@ export const CopoAdminPanel: React.FC<CopoAdminPanelProps> = ({
                 ref={videoPlayerRef}
                 src={previewVideo.videoUrl || previewVideo.localVideoUrl}
                 poster={previewVideo.thumbnailUrl}
-                autoPlay
                 loop
                 playsInline
                 muted={isVideoMuted}
+                onCanPlay={() => {
+                  if (!hasVideoStarted && videoPlayerRef.current) {
+                    videoPlayerRef.current.pause();
+                    setIsVideoPlaying(false);
+                  }
+                }}
+                onPlaying={() => {
+                  if (!hasVideoStarted && videoPlayerRef.current) {
+                    videoPlayerRef.current.pause();
+                    setIsVideoPlaying(false);
+                  } else {
+                    setIsVideoPlaying(true);
+                  }
+                }}
+                onPlay={() => setIsVideoPlaying(true)}
+                onPause={() => setIsVideoPlaying(false)}
+                onTimeUpdate={(e) => {
+                  const t = e.currentTarget;
+                  // Safety catch: force pause if it should be stopped but is moving
+                  if ((!hasVideoStarted || !isVideoPlaying) && !t.paused) {
+                    t.pause();
+                  }
+                }}
                 className="w-full h-full object-contain"
               />
+
+              {/* Central Play Overlay if not started */}
+              {!hasVideoStarted && (
+                <button
+                  onClick={() => {
+                    setHasVideoStarted(true);
+                    setIsVideoPlaying(true);
+                    videoPlayerRef.current?.play();
+                  }}
+                  className="absolute inset-0 w-full h-full z-20 flex items-center justify-center bg-black/20 group hover:bg-black/30 transition-all cursor-pointer"
+                >
+                  <div className="w-20 h-20 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white border border-white/30 group-hover:scale-110 transition-transform">
+                    <Play className="w-10 h-10 fill-white ml-1" />
+                  </div>
+                </button>
+              )}
 
               {/* Player Overlay Controls */}
               <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between">
                 <button
                   onClick={() => {
                     if (videoPlayerRef.current) {
+                      if (!hasVideoStarted) setHasVideoStarted(true);
                       if (isVideoPlaying) videoPlayerRef.current.pause();
                       else videoPlayerRef.current.play();
                       setIsVideoPlaying(!isVideoPlaying);
                     }
                   }}
-                  className="p-2.5 rounded-full bg-black/60 backdrop-blur text-zinc-900 hover:bg-zinc-900/40"
+                  className="p-2.5 rounded-full bg-black/60 backdrop-blur text-white hover:bg-zinc-900/40"
                 >
                   {isVideoPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
                 </button>
 
                 <button
                   onClick={() => setIsVideoMuted(!isVideoMuted)}
-                  className="p-2.5 rounded-full bg-black/60 backdrop-blur text-zinc-900 hover:bg-zinc-900/40"
+                  className="p-2.5 rounded-full bg-black/60 backdrop-blur text-white hover:bg-zinc-900/40"
                 >
                   {isVideoMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
                 </button>

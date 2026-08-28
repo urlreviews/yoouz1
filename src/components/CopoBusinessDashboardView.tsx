@@ -120,7 +120,8 @@ const BusinessVideoPlayerModal: React.FC<BusinessVideoPlayerModalProps> = ({
   onReply 
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [isPlaying, setIsPlaying] = useState(true);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [hasStarted, setHasStarted] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -129,6 +130,16 @@ const BusinessVideoPlayerModal: React.FC<BusinessVideoPlayerModalProps> = ({
   const videoSrc = useMemo(() => {
     return normalizeVideoUrl(video.videoUrl);
   }, [video.videoUrl]);
+
+  useEffect(() => {
+    if (videoRef.current) {
+      if (hasStarted) {
+        videoRef.current.play().catch(() => {});
+      } else {
+        videoRef.current.pause();
+      }
+    }
+  }, [hasStarted, videoSrc]);
 
   const sanitizedWebsiteUrl = useMemo(() => {
     const raw = websiteUrl || (video as any).websiteUrl || (video as any).placeWebsite;
@@ -154,6 +165,9 @@ const BusinessVideoPlayerModal: React.FC<BusinessVideoPlayerModalProps> = ({
 
   const togglePlay = () => {
     if (!videoRef.current) return;
+    if (!hasStarted) {
+      setHasStarted(true);
+    }
     if (videoRef.current.paused) {
       videoRef.current.play();
       setIsPlaying(true);
@@ -175,6 +189,12 @@ const BusinessVideoPlayerModal: React.FC<BusinessVideoPlayerModalProps> = ({
 
   const handleTimeUpdate = () => {
     if (!videoRef.current) return;
+    
+    // Safety catch: force pause if it should be stopped but is moving
+    if ((!hasStarted || !isPlaying) && !videoRef.current.paused) {
+      videoRef.current.pause();
+    }
+    
     setCurrentTime(videoRef.current.currentTime);
   };
 
@@ -231,12 +251,25 @@ const BusinessVideoPlayerModal: React.FC<BusinessVideoPlayerModalProps> = ({
           <video
             ref={videoRef}
             src={videoSrc}
-            autoPlay
             playsInline
             disablePictureInPicture
             controlsList="nofullscreen nodownload noremoteplayback"
             onTimeUpdate={handleTimeUpdate}
             onLoadedMetadata={handleLoadedMetadata}
+            onCanPlay={() => {
+              if (!hasStarted && videoRef.current) {
+                videoRef.current.pause();
+                setIsPlaying(false);
+              }
+            }}
+            onPlaying={() => {
+              if (!hasStarted && videoRef.current) {
+                videoRef.current.pause();
+                setIsPlaying(false);
+              } else {
+                setIsPlaying(true);
+              }
+            }}
             onPlay={() => setIsPlaying(true)}
             onPause={() => setIsPlaying(false)}
             onEnded={() => setIsPlaying(false)}
@@ -244,10 +277,10 @@ const BusinessVideoPlayerModal: React.FC<BusinessVideoPlayerModalProps> = ({
           />
 
           {/* Central Play/Pause Animation Feedback */}
-          {showCenterFeedback && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 animate-in zoom-in-75 fade-out duration-300">
+          {(!hasStarted || showCenterFeedback) && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 animate-in zoom-in-75 duration-300">
               <div className="w-16 h-16 rounded-full bg-black/75 backdrop-blur-md flex items-center justify-center text-white shadow-2xl border border-white/20">
-                {isPlaying ? <Play className="w-8 h-8 fill-current ml-1" /> : <Pause className="w-8 h-8 fill-current" />}
+                {isPlaying && hasStarted ? <Pause className="w-8 h-8 fill-current" /> : <Play className="w-8 h-8 fill-current ml-1" />}
               </div>
             </div>
           )}

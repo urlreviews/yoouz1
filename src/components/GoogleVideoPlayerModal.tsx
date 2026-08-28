@@ -44,6 +44,7 @@ export const GoogleVideoPlayerModal: React.FC<GoogleVideoPlayerModalProps> = ({
   onOpenCreator
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
+  const [hasStarted, setHasStarted] = useState(false);
   const [isMuted, setIsMuted] = useState<boolean>(true);
   const [newComment, setNewComment] = useState("");
   const [activeVideoSrc, setActiveVideoSrc] = useState<string>("");
@@ -76,10 +77,15 @@ export const GoogleVideoPlayerModal: React.FC<GoogleVideoPlayerModalProps> = ({
     if (videoRef.current && activeVideoSrc) {
       videoRef.current.currentTime = 0;
       videoRef.current.muted = isMuted;
-      try {
-        videoRef.current.pause();
-      } catch (e) {}
-      setIsPlaying(false);
+      
+      if (hasStarted) {
+        videoRef.current.play().then(() => setIsPlaying(true)).catch(() => {});
+      } else {
+        try {
+          videoRef.current.pause();
+        } catch (e) {}
+        setIsPlaying(false);
+      }
     }
     return () => {
       if (videoRef.current) {
@@ -88,7 +94,7 @@ export const GoogleVideoPlayerModal: React.FC<GoogleVideoPlayerModalProps> = ({
         } catch (e) {}
       }
     };
-  }, [activeVideoSrc, currentReview?.id]);
+  }, [activeVideoSrc, currentReview?.id, hasStarted]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -102,10 +108,9 @@ export const GoogleVideoPlayerModal: React.FC<GoogleVideoPlayerModalProps> = ({
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [currentIndex, reviews]);
+  }, [currentIndex, reviews, hasStarted]);
 
   const handleNext = () => {
-    setIsPlaying(true);
     if (currentIndex < reviews.length - 1) {
       onSelectReview(reviews[currentIndex + 1]);
     } else {
@@ -114,7 +119,6 @@ export const GoogleVideoPlayerModal: React.FC<GoogleVideoPlayerModalProps> = ({
   };
 
   const handlePrev = () => {
-    setIsPlaying(true);
     if (currentIndex > 0) {
       onSelectReview(reviews[currentIndex - 1]);
     } else {
@@ -128,6 +132,7 @@ export const GoogleVideoPlayerModal: React.FC<GoogleVideoPlayerModalProps> = ({
       videoRef.current.pause();
       setIsPlaying(false);
     } else {
+      setHasStarted(true);
       videoRef.current.muted = isMuted;
       videoRef.current.play().then(() => setIsPlaying(true)).catch(() => {});
     }
@@ -181,12 +186,33 @@ export const GoogleVideoPlayerModal: React.FC<GoogleVideoPlayerModalProps> = ({
             ref={videoRef}
             src={activeVideoSrc || normalizeVideoUrl(currentReview.videoUrl) || undefined}
             poster={currentReview.thumbnailUrl}
-            autoPlay
             playsInline
             loop
             preload="auto"
             muted={isMuted}
             onClick={togglePlay}
+            onCanPlay={() => {
+              if (!hasStarted && videoRef.current) {
+                videoRef.current.pause();
+                setIsPlaying(false);
+              }
+            }}
+            onPlaying={() => {
+              if (!hasStarted && videoRef.current) {
+                videoRef.current.pause();
+                setIsPlaying(false);
+              } else {
+                setIsPlaying(true);
+              }
+            }}
+            onTimeUpdate={(e) => {
+              const t = e.currentTarget;
+              // Safety catch: force pause if it should be stopped but is moving
+              if ((!hasStarted || !isPlaying) && !t.paused) {
+                t.pause();
+              }
+            }}
+            onPause={() => setIsPlaying(false)}
             onError={(e) => {
               const el = e.currentTarget;
               const errCode = el.error?.code;

@@ -87,7 +87,7 @@ export const VideoFeedCard: React.FC<VideoFeedCardProps> = ({
   businessBannerUrl,
   cardRef,
   localBlobUrl,
-  hasUserStartedFeed = true,
+  hasUserStartedFeed = false,
   onStartFeed
 }) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -175,56 +175,53 @@ return () => {
     const el = videoRef.current;
     if (!el) return;
 
-    if (isActive) {
-      if (!hasUserStartedFeed) {
-        try {
-          el.pause();
-        } catch (e) {}
-        setIsPlaying(false);
-        setShowPlayPauseFeedback(null);
-        el.muted = isMuted;
-        if (!isMuted) el.volume = 1;
-      } else {
-        setShowPlayPauseFeedback(null);
-        el.muted = isMuted;
-        if (!isMuted) el.volume = 1;
+    const shouldPlay = isActive && hasUserStartedFeed && !isManuallyPaused;
 
-        const playPromise = el.play();
-        if (playPromise !== undefined) {
-          playPromise
-            .then(() => {
+    if (shouldPlay) {
+      setShowPlayPauseFeedback(null);
+      el.muted = isMuted;
+      if (!isMuted) el.volume = 1;
+
+      const playPromise = el.play();
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => {
+            setIsPlaying(true);
+            setIsBuffering(false);
+          })
+          .catch(() => {
+            el.muted = true;
+            el.play().then(() => {
               setIsPlaying(true);
               setIsBuffering(false);
-            })
-            .catch(() => {
-              el.muted = true;
-              el.play().then(() => {
-                setIsPlaying(true);
-                setIsBuffering(false);
-              }).catch(() => {
-                setIsPlaying(false);
-              });
+            }).catch(() => {
+              setIsPlaying(false);
             });
-        }
+          });
       }
     } else {
-      // Inactive card: pause and reset time
+      // If we are not supposed to play, force pause
       try {
         el.pause();
-        el.currentTime = 0;
+        if (!isActive) {
+          el.currentTime = 0;
+        }
       } catch (e) {}
       setIsPlaying(false);
-      setIsManuallyPaused(false);
-      setShowPlayPauseFeedback(null);
       setIsBuffering(false);
-      setProgressPercent(0);
+      if (!isActive) {
+        setIsManuallyPaused(false);
+        setProgressPercent(0);
+      }
+      setShowPlayPauseFeedback(null);
     }
+    
     return () => {
       try {
         el.pause();
       } catch (e) {}
     };
-  }, [isActive, currentSource, isMuted, hasUserStartedFeed]);
+  }, [isActive, currentSource, isMuted, hasUserStartedFeed, isManuallyPaused]);
 
   // Keep iOS / Android Lock Screen & Media Controls in sync with rich metadata & app logo artwork
   useEffect(() => {
@@ -478,6 +475,13 @@ return () => {
           className="w-full h-full object-cover absolute inset-0"
           onTimeUpdate={(e) => {
             const t = e.currentTarget;
+            
+            // Safety: if it should be paused but is moving (browser heuristic), force pause
+            const shouldPlay = isActive && hasUserStartedFeed && !isManuallyPaused;
+            if (!shouldPlay && !t.paused) {
+              t.pause();
+            }
+
             if (t.duration && !isNaN(t.duration) && t.duration > 0) {
               setProgressPercent((t.currentTime / t.duration) * 100);
             }
@@ -488,11 +492,25 @@ return () => {
           }}
           onCanPlay={() => {
             setIsVideoLoaded(true);
-            if (isActive && !isManuallyPaused && videoRef.current?.paused) {
-              videoRef.current.play().catch(() => {});
+            const shouldPlay = isActive && hasUserStartedFeed && !isManuallyPaused;
+            if (shouldPlay) {
+              if (videoRef.current?.paused) {
+                videoRef.current.play().catch(() => {});
+              }
+            } else {
+              // Force pause if not active or feed not started or manually paused
+              videoRef.current?.pause();
+              setIsPlaying(false);
             }
           }}
           onPlaying={() => {
+            const shouldPlay = isActive && hasUserStartedFeed && !isManuallyPaused;
+            if (!shouldPlay) {
+              // Safety catch for browser-level autoplay heuristics or race conditions
+              videoRef.current?.pause();
+              setIsPlaying(false);
+              return;
+            }
             setIsPlaying(true);
             setIsBuffering(false);
             setIsVideoLoaded(true);
@@ -634,8 +652,8 @@ return () => {
         </div>
       )}
 
-      {/* Paused Center Play Button - shown whenever video is paused */}
-      {isActive && isManuallyPaused && !showPlayPauseFeedback && (
+      {/* Paused Center Play Button - shown whenever video is paused or feed hasn't started */}
+      {isActive && (isManuallyPaused || !hasUserStartedFeed) && !showPlayPauseFeedback && (
         <button
           type="button"
           id={`copo-play-center-btn-${video.id}`}
